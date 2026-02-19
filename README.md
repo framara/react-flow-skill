@@ -4,7 +4,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill for buildi
 
 ## What's included
 
-The skill provides expert guidance across 10 reference topics:
+The skill provides expert guidance across 11 reference topics:
 
 - **Fundamentals** - Installation, setup, first flow, node/edge objects
 - **Custom Nodes** - Custom node components, Handle, multiple handles, drag handles
@@ -16,6 +16,7 @@ The skill provides expert guidance across 10 reference topics:
 - **Components & Hooks** - Background, Controls, MiniMap, Panel, NodeToolbar, NodeResizer, hooks
 - **Performance & Styling** - Memoization, render optimization, theming, CSS variables, Tailwind
 - **Troubleshooting** - Common errors, debugging, edge display issues, Zustand warnings
+- **E2E Testing** - Playwright setup, React Flow selectors, node/edge/viewport/connection test patterns
 
 It also includes a 12-rule agent behavior contract covering the most critical React Flow patterns (imports, container sizing, nodeTypes stability, handle visibility, state immutability, and more) so Claude follows best practices automatically.
 
@@ -41,6 +42,7 @@ Once installed, Claude Code will automatically use this skill when you work on R
 - Integrate with Zustand for state management
 - Add automatic layouting with dagre or elkjs
 - Optimize performance for large graphs
+- Write Playwright E2E tests for React Flow applications
 
 ## License
 
