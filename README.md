@@ -21,16 +21,14 @@ It also includes a 12-rule agent behavior contract covering the most critical Re
 
 ## Installation
 
-Clone into your Claude Code skills directory:
-
-```
-git clone https://github.com/framara/react-flow-skill ~/.claude/skills/react-flow
+```bash
+npx skills add framara/react-flow-skill
 ```
 
-To install for a specific project instead of globally:
+To install globally (all projects):
 
-```
-git clone https://github.com/framara/react-flow-skill .claude/skills/react-flow
+```bash
+npx skills add framara/react-flow-skill -g
 ```
 
 ## Usage
