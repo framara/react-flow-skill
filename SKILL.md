@@ -26,7 +26,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 
 ## First 60 seconds (triage template)
 
-- Clarify the goal: new flow setup, custom nodes/edges, state management, layout, performance, styling, E2E testing, or debugging.
+- Clarify the goal: new flow setup, custom nodes/edges, state management, layout, performance, styling, E2E testing, advanced patterns (undo/redo, copy/paste, computed flows, collaboration), or debugging.
 - Collect minimal facts:
   - React Flow version (v12+ uses `@xyflow/react`)
   - TypeScript or JavaScript
@@ -54,6 +54,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 - Memoization, render optimization, theming, CSS variables, Tailwind -> `references/performance-and-styling.md`
 - Common errors, debugging, edge display issues, Zustand warnings -> `references/troubleshooting.md`
 - Playwright E2E tests, flow selectors, drag/viewport/connection testing -> `references/e2e-testing.md`
+- Undo/redo, copy/paste, computed flows, dynamic handles, save/restore, collaboration -> `references/advanced-patterns.md`
 
 ## Common pitfalls -> next best move
 
@@ -93,3 +94,4 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 - `references/performance-and-styling.md`
 - `references/troubleshooting.md`
 - `references/e2e-testing.md`
+- `references/advanced-patterns.md`
