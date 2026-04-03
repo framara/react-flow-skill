@@ -34,6 +34,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
   - Number of nodes expected (affects performance strategy)
   - Styling approach (CSS, Tailwind, styled-components)
 - Branch quickly:
+  - migrating from legacy `reactflow` or `react-flow-renderer` -> package rename, import changes, API differences
   - blank canvas or missing nodes -> container dimensions or missing CSS import
   - edges not rendering -> missing handles, missing CSS, or `display: none` on handles
   - re-renders or sluggish performance -> nodeTypes defined inside component, missing memoization
@@ -43,6 +44,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 
 ## Routing map (read the right reference fast)
 
+- Migrating from `reactflow` or `react-flow-renderer` to `@xyflow/react` v12 -> `references/migration.md`
 - Installation, setup, first flow, node/edge objects -> `references/fundamentals.md`
 - Custom node components, Handle, multiple handles, drag handles -> `references/custom-nodes.md`
 - Custom edge components, path utilities, edge labels, markers -> `references/custom-edges.md`
@@ -55,6 +57,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 - Common errors, debugging, edge display issues, Zustand warnings -> `references/troubleshooting.md`
 - Playwright E2E tests, flow selectors, drag/viewport/connection testing -> `references/e2e-testing.md`
 - Undo/redo, copy/paste, computed flows, dynamic handles, save/restore, collaboration -> `references/advanced-patterns.md`
+- Context menu add node, drag-and-drop sidebar, detail panel, export as image -> `references/recipes.md`
 
 ## Common pitfalls -> next best move
 
@@ -83,6 +86,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 
 ## References
 
+- `references/migration.md`
 - `references/fundamentals.md`
 - `references/custom-nodes.md`
 - `references/custom-edges.md`
@@ -95,3 +99,4 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 - `references/troubleshooting.md`
 - `references/e2e-testing.md`
 - `references/advanced-patterns.md`
+- `references/recipes.md`
