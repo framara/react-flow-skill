@@ -22,7 +22,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 9. When using multiple handles of the same type on a node, always assign unique `id` props.
 10. After programmatically adding/removing handles, call `useUpdateNodeInternals` to refresh the node.
 11. Always create new objects when updating node/edge state — mutations are not detected by React Flow.
-12. Prefer controlled flows (with `onNodesChange`/`onEdgesChange`/`onConnect`) for any non-trivial application.
+12. Prefer controlled flows for non-trivial applications. Wire `onNodesChange` and `onEdgesChange` for editable controlled elements, and add `onConnect` only when users can create connections.
 
 ## First 60 seconds (triage template)
 
@@ -79,7 +79,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 - Confirm `nodeTypes` / `edgeTypes` are stable references (defined outside component or memoized).
 - Confirm custom nodes use `<Handle>` components with proper `type` and `position`.
 - Confirm interactive elements inside nodes have `nodrag` class.
-- Confirm controlled flows wire up all three handlers: `onNodesChange`, `onEdgesChange`, `onConnect`.
+- Confirm controlled flows wire `onNodesChange`/`onEdgesChange` for editable elements and `onConnect` when connection creation is enabled.
 - Confirm state updates create new node/edge objects (no mutations).
 - Confirm TypeScript generics are applied to hooks and callbacks for type safety.
 - Confirm performance-sensitive flows memoize custom node/edge components with `React.memo`.

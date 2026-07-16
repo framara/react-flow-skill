@@ -18,15 +18,22 @@ Use this file for quick implementation patterns for frequently requested React F
 Right-click on the canvas pane to add a new node at the cursor position. Use `screenToFlowPosition` to convert screen coordinates to flow coordinates:
 
 ```tsx
-import { useCallback, useState, useRef } from 'react';
-import { ReactFlow, useReactFlow, Panel, type Node, type Edge } from '@xyflow/react';
+import { useCallback, useState } from 'react';
+import {
+  ReactFlow,
+  useReactFlow,
+  useNodesState,
+  useEdgesState,
+  type Node,
+  type Edge,
+} from '@xyflow/react';
 
 let id = 0;
 const getId = () => `node_${id++}`;
 
 function Flow() {
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, , onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition } = useReactFlow();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -53,6 +60,8 @@ function Flow() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onPaneContextMenu={onPaneContextMenu}
         onPaneClick={() => setMenu(null)}
         fitView
@@ -80,7 +89,7 @@ function Flow() {
 }
 ```
 
-**Note**: Wrap the component in `<ReactFlowProvider>` since it uses `useReactFlow`.
+**Note**: Render this component as a child of `<ReactFlowProvider>` because it calls `useReactFlow` before rendering `<ReactFlow>`.
 
 ## Drag-and-drop from sidebar
 
@@ -161,6 +170,7 @@ function Flow() {
 ```
 
 Use `application/reactflow` as the MIME type to avoid interfering with native drag-and-drop.
+Render `Flow` as a child of `<ReactFlowProvider>` because this uncontrolled recipe uses `useReactFlow`.
 
 ## Show node details in a sidebar panel
 
@@ -168,9 +178,18 @@ Display a detail panel when a node is selected. Use the `onNodeClick` callback o
 
 ```tsx
 import { useState, useCallback } from 'react';
-import { ReactFlow, Panel, useReactFlow, type Node } from '@xyflow/react';
+import {
+  ReactFlow,
+  useReactFlow,
+  useNodesState,
+  useEdgesState,
+  type Node,
+  type Edge,
+} from '@xyflow/react';
 
 function Flow() {
+  const [nodes, , onNodesChange] = useNodesState<Node>(initialNodes);
+  const [edges, , onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const { updateNodeData } = useReactFlow();
 
@@ -188,6 +207,8 @@ function Flow() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
           fitView
@@ -216,7 +237,7 @@ function Flow() {
 }
 ```
 
-**Tip**: For complex detail panels, use `useNodesData(selectedNode.id)` to subscribe to real-time updates from computed flows or collaborative editing.
+Render this component as a child of `<ReactFlowProvider>`. For complex detail panels, store the selected ID and move the panel into a child component that calls `useNodesData(selectedId)` so it subscribes to current node data instead of retaining a copied node object.
 
 ## Delete selected nodes and edges with a button
 

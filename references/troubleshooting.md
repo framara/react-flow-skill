@@ -363,7 +363,7 @@ useEffect(() => {
 1. Is `@xyflow/react/dist/style.css` imported?
 2. Does the parent container have explicit width and height?
 3. Are `nodeTypes`/`edgeTypes` defined outside the component?
-4. Are all three handlers wired up (`onNodesChange`, `onEdgesChange`, `onConnect`)?
+4. Are `onNodesChange`/`onEdgesChange` wired for editable controlled elements, and `onConnect` when users can create edges?
 5. Do custom nodes include `<Handle>` components?
 6. Do interactive elements inside nodes have `className="nodrag"`?
 7. Are multiple handles of the same type given unique `id`s?

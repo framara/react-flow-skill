@@ -9,10 +9,14 @@ Use this file when upgrading a project from the legacy `reactflow` package (v11 
 - [Package rename](#package-rename)
 - [Import changes](#import-changes)
 - [CSS import changes](#css-import-changes)
+- [Node dimensions](#node-dimensions)
 - [Immutable state updates](#immutable-state-updates)
+- [Renamed node and reconnect APIs](#renamed-node-and-reconnect-apis)
 - [Custom node props renamed](#custom-node-props-renamed)
+- [Handle classes and internal store names](#handle-classes-and-internal-store-names)
 - [TypeScript type changes](#typescript-type-changes)
 - [Hooks changes](#hooks-changes)
+- [Removed utilities and change events](#removed-utilities-and-change-events)
 - [Step-by-step checklist](#step-by-step-checklist)
 
 ## Package rename
@@ -87,6 +91,40 @@ setNodes((currentNodes) =>
 
 This applies everywhere: `setNodes`, `setEdges`, `onNodesChange` handlers, Zustand stores, etc.
 
+## Node dimensions
+
+Measured dimensions moved from `node.width`/`node.height` to `node.measured.width`/`node.measured.height`. In v12, top-level `width` and `height` set fixed inline dimensions instead:
+
+```tsx
+const measuredWidth = node.measured?.width;
+
+const fixedSizeNode = {
+  id: '1',
+  position: { x: 0, y: 0 },
+  data: {},
+  width: 180,
+  height: 40,
+};
+```
+
+Update layout integrations to read `node.measured`, and remove persisted v11 measurement fields unless they are intentionally becoming fixed dimensions.
+
+## Renamed node and reconnect APIs
+
+Rename `parentNode` to `parentId` for sub-flow children.
+
+The edge update APIs were renamed:
+
+| v11 | v12 |
+|-----|-----|
+| `onEdgeUpdate` | `onReconnect` |
+| `onEdgeUpdateStart` | `onReconnectStart` |
+| `onEdgeUpdateEnd` | `onReconnectEnd` |
+| `updateEdge` utility | `reconnectEdge` |
+| `edgeUpdaterRadius` | `reconnectRadius` |
+| `edge.updatable` | `edge.reconnectable` |
+| `edgesUpdatable` | `edgesReconnectable` |
+
 ## Custom node props renamed
 
 The position props passed to custom nodes were renamed:
@@ -102,6 +140,15 @@ function CustomNode({ positionAbsoluteX, positionAbsoluteY }) {
   // ...
 }
 ```
+
+## Handle classes and internal store names
+
+Handle state classes changed:
+
+- `react-flow__handle-connecting` -> `connectingfrom` / `connectingto`
+- `react-flow__handle-valid` -> `valid`
+
+If code reads React Flow's internal store, rename `nodeInternals` to `nodeLookup`. Prefer public hooks and instance methods where possible because internal state is not a stable integration surface.
 
 ## TypeScript type changes
 
@@ -145,6 +192,19 @@ New hooks in v12 (no v11 equivalent):
 
 Note: `useHandleConnections` is a v12-only hook (introduced in 12.0, deprecated in 12.4) — you won't find it in v11 code. Use `useNodeConnections` instead.
 
+## Removed utilities and change events
+
+Replace removed deprecated APIs:
+
+| Removed in v12 | Replacement |
+|----------------|-------------|
+| `getTransformForBounds` | `getViewportForBounds` |
+| `getRectOfNodes` | `getNodesBounds` |
+| `project` | `screenToFlowPosition` |
+| `updateEdge` utility | `reconnectEdge` |
+
+Custom implementations of `applyNodeChanges` or `applyEdgeChanges` must handle the new `replace` change event. The old `reset` event was removed.
+
 ## Step-by-step checklist
 
 1. Replace the package: `npm uninstall reactflow && npm install @xyflow/react`
@@ -153,11 +213,15 @@ Note: `useHandleConnections` is a v12-only hook (introduced in 12.0, deprecated 
    - `import ReactFlow` (default) → `import { ReactFlow }` (named)
    - `'reactflow/dist/style.css'` → `'@xyflow/react/dist/style.css'`
 3. Remove any `@reactflow/*` subpackage dependencies
-4. Update custom node components: `xPos` → `positionAbsoluteX`, `yPos` → `positionAbsoluteY`
-5. Audit all `setNodes` / `setEdges` calls for mutations — convert to spread-based immutable updates
-6. Update TypeScript types to use the new `Node<Data, Type>` union pattern
-7. If you've already adopted `useHandleConnections` (v12-only, deprecated in 12.4), replace it with `useNodeConnections`
-8. Test that the flow renders correctly (check for blank canvas = missing CSS or container dimensions)
+4. Move measured-dimension reads to `node.measured` and review persisted `width`/`height`
+5. Rename `parentNode` to `parentId` and migrate edge-update APIs to reconnect APIs
+6. Update custom node components: `xPos` → `positionAbsoluteX`, `yPos` → `positionAbsoluteY`
+7. Audit all `setNodes` / `setEdges` calls for mutations — convert to spread-based immutable updates
+8. Update handle-state CSS classes and any `nodeInternals` store access
+9. Replace removed utilities and handle the `replace` change in custom change applicators
+10. Update TypeScript types to use the new `Node<Data, Type>` union pattern
+11. If you've already adopted `useHandleConnections` (v12-only, deprecated in 12.4), replace it with `useNodeConnections`
+12. Test that the flow renders correctly (check for blank canvas = missing CSS or container dimensions)
 
 ## Do / Don't
 

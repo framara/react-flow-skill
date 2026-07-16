@@ -191,7 +191,7 @@ export default function Flow() {
 }
 ```
 
-### Uncontrolled (simple demos only)
+### Uncontrolled
 
 React Flow manages state internally. Use `defaultNodes` / `defaultEdges` instead of `nodes` / `edges`:
 
@@ -210,6 +210,8 @@ To modify an uncontrolled flow programmatically, use the `useReactFlow` hook:
 const { addNodes } = useReactFlow();
 addNodes({ id: 'new', position: { x: 0, y: 0 }, data: { label: 'New' } });
 ```
+
+Uncontrolled flows are useful when React Flow can own the graph state. Choose a controlled flow when application state, persistence, collaboration, validation, or external UI must coordinate closely with node and edge updates.
 
 ## The viewport
 

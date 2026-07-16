@@ -377,7 +377,7 @@ const nodes = [
 
 - Do memoize custom node/edge components with `React.memo`.
 - Do memoize `nodeTypes`, `edgeTypes`, callback props, and object props.
-- Do use `onlyRenderVisibleElements` for flows with 100+ nodes.
+- Do benchmark `onlyRenderVisibleElements` for large or expensive graphs; its benefit depends on node complexity, graph density, and interaction patterns.
 - Do import `base.css` instead of `style.css` when using Tailwind.
 - Do use CSS variables for theme customization.
 - Don't subscribe to full `nodes`/`edges` arrays in components that only need a subset.

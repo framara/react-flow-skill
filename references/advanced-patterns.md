@@ -87,14 +87,36 @@ export default useFlowStore;
 Wire up the keyboard shortcuts and undo/redo actions:
 
 ```tsx
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ReactFlow } from '@xyflow/react';
 import useFlowStore from './store';
 
 function Flow() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useFlowStore();
-  // Zundo attaches a `temporal` store to the hook — read it non-reactively
-  const { undo, redo } = useFlowStore.temporal.getState();
+  const dragStart = useRef<{ nodes: typeof nodes; edges: typeof edges } | null>(null);
+  // Zundo attaches a vanilla temporal store to the hook.
+  const { undo, redo, pause, resume } = useFlowStore.temporal.getState();
+
+  const onNodeDragStart = () => {
+    dragStart.current = {
+      nodes: structuredClone(useFlowStore.getState().nodes),
+      edges: structuredClone(useFlowStore.getState().edges),
+    };
+    pause();
+  };
+
+  const onNodeDragStop = () => {
+    resume();
+    const snapshot = dragStart.current;
+    if (!snapshot) return;
+
+    // Commit the entire drag gesture as one history entry.
+    useFlowStore.temporal.setState((history) => ({
+      pastStates: [...history.pastStates, snapshot].slice(-100),
+      futureStates: [],
+    }));
+    dragStart.current = null;
+  };
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -118,11 +140,15 @@ function Flow() {
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      onNodeDragStart={onNodeDragStart}
+      onNodeDragStop={onNodeDragStop}
       fitView
     />
   );
 }
 ```
+
+Zundo records every Zustand setter call by default. Because dragging emits many `onNodesChange` calls, pause temporal tracking during the gesture and append the pre-drag snapshot once on drag stop. Apply the same transaction-boundary idea to resize gestures and other continuous interactions.
 
 ### Without Zundo (manual implementation)
 
@@ -197,9 +223,9 @@ export function useUndoRedo(maxHistory = 100) {
 
 ## Copy / paste
 
-### Pattern: clipboard events with custom MIME type
+### Pattern: in-memory clipboard
 
-Use the browser Clipboard API with a custom data type to avoid interfering with normal text copy/paste. Regenerate IDs on paste and offset positions so pasted nodes don't overlap originals. Remap edge source/target to the new IDs.
+Keep copied elements in a ref for an editor-local clipboard. Regenerate IDs on paste, offset positions so pasted nodes do not overlap originals, and remap edge endpoints. For cross-tab or system clipboard support, serialize this payload through the browser Clipboard API and handle its permission and format constraints separately.
 
 ```tsx
 import { useCallback, useRef } from 'react';
@@ -209,8 +235,7 @@ let idCounter = 0;
 const newId = () => `pasted_${Date.now()}_${idCounter++}`;
 
 export function useCopyPaste() {
-  const { getNodes, getEdges, setNodes, setEdges, screenToFlowPosition } =
-    useReactFlow();
+  const { getNodes, getEdges, setNodes, setEdges } = useReactFlow();
   const clipboard = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
 
   const copy = useCallback(() => {
@@ -735,7 +760,7 @@ Before building multiplayer, decide what to sync:
 
 ### Architecture with Yjs (CRDT)
 
-[Yjs](https://yjs.dev/) provides conflict-free replicated data types. Nodes and edges are stored in shared `Y.Map` and `Y.Array` structures. Changes merge automatically without a central server.
+[Yjs](https://yjs.dev/) provides conflict-free replicated data types. The starter below stores each complete node as one `Y.Map` value and edges in a `Y.Array`.
 
 ```bash
 npm install yjs y-webrtc
@@ -810,7 +835,7 @@ function useYjsSync(yNodes: Y.Map<Node>, yEdges: Y.Array<Edge>) {
 | **Supabase Realtime** | Server-authoritative | No | Manual (last-write-wins) |
 | **Convex** | Server-authoritative | Optimistic updates | Server-managed |
 
-CRDTs (Yjs, Automerge) are the better fit for flow editors because node position conflicts resolve naturally (both users' moves merge). Server-authoritative solutions require more coordination logic but are simpler to set up with existing databases.
+CRDTs such as Yjs and Automerge can be a strong fit for offline-capable flow editors, but the data model determines merge granularity. In the starter above, concurrent edits to different node IDs merge, while concurrent replacements of the same complete node value resolve as competing writes rather than merging individual fields. Use a nested `Y.Map` per node—or another field-level shared structure—when position, data, and dimensions must merge independently. Server-authoritative solutions require explicit conflict policy but may integrate more simply with an existing backend.
 
 ### Cursor sharing
 

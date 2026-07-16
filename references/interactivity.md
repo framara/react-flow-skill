@@ -24,7 +24,7 @@ Use this file when configuring event handlers, connection validation, selection 
 
 ## Core interaction handlers
 
-A controlled flow needs three handlers for basic interactivity:
+An editable controlled flow typically uses these three handlers:
 
 ```tsx
 import { useCallback, useState } from 'react';
@@ -60,7 +60,7 @@ function Flow() {
 }
 ```
 
-Without `onNodesChange`, nodes snap back after dragging. Without `onConnect`, connection lines appear but edges are never created.
+Without `onNodesChange`, controlled nodes snap back after dragging. Without `onEdgesChange`, controlled edge selection, reconnection, and deletion changes are not applied. Add `onConnect` when users are allowed to create new edges.
 
 ## Default interactive capabilities
 
@@ -351,7 +351,7 @@ const onError = useCallback((code: string, message: string) => {
 
 ## Do / Don't
 
-- Do wire up all three core handlers (`onNodesChange`, `onEdgesChange`, `onConnect`) for controlled flows.
+- Do wire `onNodesChange` and `onEdgesChange` for editable controlled elements, plus `onConnect` when connection creation is enabled.
 - Do memoize event handler callbacks with `useCallback`.
 - Do use `isValidConnection` for connection rules rather than post-hoc cleanup.
 - Don't forget that `onConnectEnd` fires regardless of connection validity — check `connectionState.isValid`.

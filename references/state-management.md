@@ -9,7 +9,7 @@ Use this file when choosing between controlled and uncontrolled flows, integrati
 - [State management approaches](#state-management-approaches)
 - [Approach 1: useState with apply helpers](#approach-1-usestate-with-apply-helpers)
 - [Approach 2: useNodesState / useEdgesState hooks](#approach-2-usenodesstate--useedgesstate-hooks)
-- [Approach 3: Zustand store (recommended for production)](#approach-3-zustand-store-recommended-for-production)
+- [Approach 3: Zustand store (recommended for shared application state)](#approach-3-zustand-store-recommended-for-shared-application-state)
 - [Immutability requirement](#immutability-requirement)
 - [Using useReactFlow for programmatic updates](#using-usereactflow-for-programmatic-updates)
 - [Computing flows (data processing)](#computing-flows-data-processing)
@@ -62,7 +62,7 @@ function Flow() {
 }
 ```
 
-**Limitation**: Updating nodes from within custom node components requires prop drilling callbacks through `data`.
+Custom nodes can update this controlled state either through callbacks, a shared store, or `useReactFlow().updateNodeData()`. React Flow instance update methods emit the corresponding change events, so the controlled flow must keep `onNodesChange`/`onEdgesChange` wired.
 
 ## Approach 2: useNodesState / useEdgesState hooks
 
@@ -93,11 +93,11 @@ function Flow() {
 }
 ```
 
-**Note**: Same limitation as `useState` — still local to the component.
+**Note**: State remains local to this component, but descendants inside the provider can still call React Flow instance methods such as `updateNodeData`.
 
-## Approach 3: Zustand store (recommended for production)
+## Approach 3: Zustand store (recommended for shared application state)
 
-React Flow uses Zustand internally, making it a natural fit. This pattern eliminates prop drilling — custom nodes access state directly.
+React Flow uses Zustand internally, making it a familiar fit when flow state must be shared across distant components. It is not required merely because an app is in production; local controlled state remains appropriate when ownership is local.
 
 ### Store definition
 
@@ -190,7 +190,9 @@ function CustomNode({ data }) {
       <input
         type="color"
         defaultValue={data.color}
-        onChange={(e) => updateNodeData(id, { color: e.target.value })}
+        onChange={(e) => {
+          if (id) updateNodeData(id, { color: e.target.value });
+        }}
         className="nodrag"
       />
       <Handle type="source" position={Position.Bottom} />
@@ -316,9 +318,9 @@ const restoreFlow = () => {
 
 ## Do / Don't
 
-- Do use Zustand for any app where custom nodes need to update shared state.
+- Do use Zustand when flow state must be shared beyond the component that owns `<ReactFlow>`.
 - Do create new objects when updating node/edge state — never mutate.
 - Do use `useReactFlow` for programmatic updates that don't need to trigger re-renders.
 - Do maintain local state for form inputs inside nodes, syncing to node data on change.
-- Don't prop-drill callbacks through node `data` — use a shared store instead.
+- Don't put functions in node `data` by default; prefer `useReactFlow` for local flow updates or a shared store when state ownership is broader.
 - Don't read `nodes` or `edges` arrays directly from the store in components that don't need them (causes unnecessary re-renders).
