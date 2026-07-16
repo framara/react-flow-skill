@@ -204,11 +204,15 @@ Handles receive CSS classes during connection:
 
 | Class | When |
 |-------|------|
-| `connecting` | Connection line is over the handle |
-| `valid` | Connection would be valid |
+| `clickconnecting` | Handle was clicked to start a click-to-connect interaction |
+| `connectingfrom` | Handle the in-progress connection started from |
+| `connectingto` | Handle currently hovered as the connection target |
+| `valid` | Hovered target handle passes validation |
+| `connectionindicator` | Handle is connectable for the in-progress connection |
 
 ```css
-.react-flow__handle.connecting { background: orange; }
+.react-flow__handle.connectingfrom { background: orange; }
+.react-flow__handle.connectingto { background: gold; }
 .react-flow__handle.valid { background: green; }
 ```
 
@@ -257,11 +261,15 @@ function CustomNode({ data }) {
 
 ## Connection mode
 
-By default, source handles only connect to target handles (`connectionMode="strict"`). Set `connectionMode="loose"` on `<ReactFlow>` to allow connections between any handle types:
+By default, source handles only connect to target handles (`ConnectionMode.Strict`). Set `connectionMode={ConnectionMode.Loose}` on `<ReactFlow>` to allow connections between any handle types:
 
 ```tsx
-<ReactFlow connectionMode="loose" ... />
+import { ReactFlow, ConnectionMode } from '@xyflow/react';
+
+<ReactFlow connectionMode={ConnectionMode.Loose} ... />
 ```
+
+`ConnectionMode` is a TypeScript enum — passing the string `"loose"` fails typecheck (plain JS can pass the string).
 
 ## Do / Don't
 

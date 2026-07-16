@@ -219,10 +219,15 @@ Override default styles by setting CSS variables on `.react-flow` or `:root`:
   --xy-minimap-node-stroke-color-default: transparent;
 
   /* Background */
-  --xy-background-pattern-color-default: #81818a;
+  /* --xy-background-pattern-color (no -default suffix) overrides all pattern types */
+  --xy-background-pattern-dots-color-default: #91919a;
+  --xy-background-pattern-lines-color-default: #eee;
+  --xy-background-pattern-cross-color-default: #e2e2e2;
   --xy-background-color-default: #fff;
 }
 ```
+
+**Note**: Several `--xy-node-*`, `--xy-handle-*`, and `--xy-controls-*` `-default` variables are defined only in `style.css`, not `base.css`, so they have no effect if you import only `base.css` (as in the Tailwind setup below).
 
 ### Dark theme example
 
@@ -233,7 +238,7 @@ Override default styles by setting CSS variables on `.react-flow` or `:root`:
   --xy-node-color-default: #eee;
   --xy-edge-stroke-default: #666;
   --xy-background-color-default: #121212;
-  --xy-background-pattern-color-default: #333;
+  --xy-background-pattern-color: #333; /* overrides all pattern types */
   --xy-controls-button-background-color-default: #2a2a2a;
   --xy-controls-button-border-color-default: #444;
   --xy-minimap-background-color-default: #1e1e1e;

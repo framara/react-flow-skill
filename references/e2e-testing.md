@@ -74,8 +74,9 @@ webServer: {
 | `.react-flow__edge` | Individual edge |
 | `.react-flow__edge-path` | Edge path element |
 | `.react-flow__edge-interaction` | Edge interaction area (wider invisible path for click targets) |
-| `.react-flow__connection` | Active connection line |
-| `.react-flow__connectionline` | Connection line path |
+| `.react-flow__connection` | In-progress connection line (group) |
+| `.react-flow__connection-path` | In-progress connection path element |
+| `.react-flow__connectionline` | SVG container wrapping the in-progress connection |
 | `.react-flow__handle` | Handle element |
 | `.react-flow__handle-top` | Handle positioned at top |
 | `.react-flow__handle-right` | Handle positioned at right |
@@ -138,6 +139,7 @@ import {
   addEdge,
   applyNodeChanges,
   applyEdgeChanges,
+  MarkerType,
   type Node,
   type Edge,
   type OnNodesChange,
@@ -153,7 +155,12 @@ const initialNodes: Node[] = [
 ];
 
 const initialEdges: Edge[] = [
-  { id: 'edge-1-2', source: 'node-1', target: 'node-2' },
+  {
+    id: 'edge-1-2',
+    source: 'node-1',
+    target: 'node-2',
+    markerEnd: { type: MarkerType.ArrowClosed },
+  },
 ];
 
 export default function TestFlow() {
@@ -502,6 +509,8 @@ test('fitView makes all nodes visible', async ({ page }) => {
 ```
 
 ## Toolbar and overlay tests
+
+These tests require a fixture whose nodes render a `<NodeToolbar>` (a custom node type) — the basic test fixture above does not include one.
 
 ### Toolbar visibility on node selection
 

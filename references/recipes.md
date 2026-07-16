@@ -30,7 +30,7 @@ function Flow() {
   const { screenToFlowPosition } = useReactFlow();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
-  const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+  const onPaneContextMenu = useCallback((event: MouseEvent | React.MouseEvent) => {
     event.preventDefault();
     setMenu({ x: event.clientX, y: event.clientY });
   }, []);
@@ -199,7 +199,7 @@ function Flow() {
           <label>
             Label:
             <input
-              value={selectedNode.data.label ?? ''}
+              value={String(selectedNode.data.label ?? '')}
               onChange={(e) => {
                 updateNodeData(selectedNode.id, { label: e.target.value });
                 setSelectedNode((n) => n && ({
@@ -243,7 +243,7 @@ function DeleteButton() {
 }
 ```
 
-**Note**: React Flow already handles `Backspace`/`Delete` key deletion by default. This recipe is for toolbar-style delete buttons.
+**Note**: React Flow already handles `Backspace` key deletion by default. To also support the `Delete` key, set `deleteKeyCode={['Backspace', 'Delete']}`. This recipe is for toolbar-style delete buttons.
 
 ## Export flow as image
 

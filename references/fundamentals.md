@@ -94,7 +94,7 @@ Key optional fields:
 | `className` | `string` | — | CSS class for the node wrapper |
 | `ariaLabel` | `string` | — | Accessibility label |
 
-Note: `width` and `height` are read-only (calculated by React Flow). Use `initialWidth` and `initialHeight` to set dimensions before measurement.
+Note: `width` and `height` are writable — set them to give a node fixed inline-style dimensions. The measured dimensions live in `node.measured.width` and `node.measured.height` (read-only, calculated by React Flow). `initialWidth` and `initialHeight` are only used before the first measurement (e.g. for SSR).
 
 ## Edge object structure
 

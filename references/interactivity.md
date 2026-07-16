@@ -69,9 +69,9 @@ With the three core handlers wired up, users get:
 - Selectable nodes and edges (click)
 - Draggable nodes
 - Connectable nodes (drag from handles)
-- Multi-selection via Shift + click
+- Multi-selection via Cmd/Ctrl + click
 - Multi-selection via Shift + drag (selection box)
-- Remove selected elements via Backspace/Delete
+- Remove selected elements via Backspace (add Delete with `deleteKeyCode={['Backspace', 'Delete']}`)
 
 ## Node event handlers
 
@@ -110,8 +110,8 @@ With the three core handlers wired up, users get:
 | `onConnectStart` | `(event, params) => void` | Connection drag begins |
 | `onConnectEnd` | `(event, connectionState) => void` | Connection drag ends (valid or not) |
 | `onClickConnectStart` | `(event, params) => void` | Click-based connection starts |
-| `onClickConnectEnd` | `(event) => void` | Click-based connection ends |
-| `isValidConnection` | `(connection) => boolean` | Validate before allowing connection |
+| `onClickConnectEnd` | `(event, connectionState) => void` | Click-based connection ends |
+| `isValidConnection` | `(connection: Connection \| Edge) => boolean` | Validate before allowing connection or edge reconnection |
 
 ### Connection validation
 
@@ -133,12 +133,15 @@ const isValidConnection = useCallback(
 <ReactFlow isValidConnection={isValidConnection} ... />
 ```
 
+`isValidConnection` receives a `Connection` for new connections and an `Edge` when an existing edge is reconnected — type the parameter as `Connection | Edge`.
+
 ### Handling dropped connections (connecting to empty space)
 
 ```tsx
 const onConnectEnd = useCallback(
   (event, connectionState) => {
-    if (!connectionState.isValid) {
+    // fromNode is InternalNode | null — isValid alone doesn't narrow it, so guard explicitly
+    if (!connectionState.isValid && connectionState.fromNode) {
       // Connection was dropped on empty canvas — create a new node here
       const { clientX, clientY } = 'changedTouches' in event ? event.changedTouches[0] : event;
       const position = screenToFlowPosition({ x: clientX, y: clientY });
@@ -235,6 +238,8 @@ Or set `deletable: false` on individual nodes/edges:
 | `elevateNodesOnSelect` | `boolean` | `true` | Raise z-index of selected nodes |
 | `elevateEdgesOnSelect` | `boolean` | `false` | Raise z-index of selected edges |
 
+The values shown for `selectionMode` and `connectionMode` are the runtime values, but the props are typed as TS enums — TypeScript users must pass the exported enums (`SelectionMode.Partial`, `ConnectionMode.Loose`); raw string literals fail typechecking.
+
 ## Keyboard configuration
 
 | Prop | Default | Description |
@@ -255,6 +260,8 @@ Set any key code to `null` to disable that keyboard shortcut.
 | `connectionLineType` | `ConnectionLineType` | Path type (`'default'`, `'straight'`, `'step'`, `'smoothstep'`, `'simplebezier'`) |
 | `connectionRadius` | `number` | Snap radius around target handles |
 | `connectionLineComponent` | `React.ComponentType` | Custom connection line component |
+
+The path types listed are the runtime values — TypeScript users must pass the exported enum (e.g. `ConnectionLineType.SmoothStep`); raw string literals fail typechecking.
 
 ## Custom connection line
 
@@ -297,13 +304,16 @@ Add nodes by dragging from a sidebar:
 function DnDFlow() {
   const { screenToFlowPosition, addNodes } = useReactFlow();
 
-  const onDragOver = useCallback((event: DragEvent) => {
+  // Use React.DragEvent (the synthetic event type), not the DOM DragEvent
+  const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+    if (!event.dataTransfer) return;
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const onDrop = useCallback((event: DragEvent) => {
+  const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+    if (!event.dataTransfer) return;
     const type = event.dataTransfer.getData('application/reactflow');
     if (!type) return;
 
@@ -316,7 +326,7 @@ function DnDFlow() {
 
 // Sidebar
 function Sidebar() {
-  const onDragStart = (event: DragEvent, nodeType: string) => {
+  const onDragStart = (event: React.DragEvent<HTMLDivElement>, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
   };

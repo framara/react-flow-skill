@@ -62,12 +62,12 @@ type TextNode = Node<{ text: string }, 'text'>;
 type AppNode = BuiltInNode | NumberNode | TextNode;
 ```
 
-**Important**: Use `type` keyword, not `interface`. TypeScript interfaces don't work with union type discriminators in React Flow.
+**Important**: Use `type` keyword, not `interface`. Interfaces lack an implicit index signature, so they don't satisfy the `Record<string, unknown>` constraint on `Node`'s data (TS2344).
 
 ### Typed custom node component
 
 ```tsx
-import { type NodeProps, Handle, Position } from '@xyflow/react';
+import { type Node, type NodeProps, Handle, Position } from '@xyflow/react';
 
 type NumberNodeData = { value: number };
 type NumberNode = Node<NumberNodeData, 'number'>;
@@ -97,7 +97,7 @@ type AppEdge = BuiltInEdge | WeightedEdge;
 ### Typed custom edge component
 
 ```tsx
-import { type EdgeProps, BaseEdge, getBezierPath } from '@xyflow/react';
+import { type Edge, type EdgeProps, BaseEdge, getBezierPath } from '@xyflow/react';
 
 type WeightedEdge = Edge<{ weight: number }, 'weighted'>;
 
@@ -144,9 +144,12 @@ const onConnect: OnConnect = useCallback(
 ### OnNodeDrag with type narrowing
 
 ```tsx
+// A plain `node.type === 'number'` check does NOT narrow the union here:
+// BuiltInNode's `type` is effectively `string | undefined`, so TypeScript
+// can't exclude it. Use a type guard predicate instead (see Type guards below).
 const onNodeDrag: OnNodeDrag<AppNode> = useCallback((event, node) => {
-  if (node.type === 'number') {
-    console.log(node.data.value); // Type-safe: TypeScript knows this is NumberNode
+  if (isNumberNode(node)) {
+    console.log(node.data.value); // Type-safe: the guard narrows to NumberNode
   }
 }, []);
 ```
@@ -166,9 +169,11 @@ const node: AppNode | undefined = reactFlow.getNode('1');
 ### useStore with typed selectors
 
 ```tsx
-import { type ReactFlowState } from '@xyflow/react';
+// useStore's selector receives the non-generic ReactFlowState, so cast the result:
+const nodes = useStore((state) => state.nodes as AppNode[]);
 
-const nodes = useStore((state: ReactFlowState<AppNode>) => state.nodes);
+// useStoreApi IS generic and can be typed directly:
+const store = useStoreApi<AppNode, AppEdge>();
 ```
 
 ### useNodesData
@@ -316,7 +321,7 @@ const useFlowStore = create<FlowState>((set, get) => ({
 
 | Mistake | Fix |
 |---------|-----|
-| Using `interface` for node types | Use `type` — interfaces break union discriminators |
+| Using `interface` for node types | Use `type` — interfaces lack the implicit index signature required by `Node`'s `Record<string, unknown>` data constraint (TS2344) |
 | Not passing generics to `<ReactFlow>` | Add `<ReactFlow<AppNode, AppEdge>>` for full type checking |
 | Accessing `data` without type guard | Use type guard function or check `node.type` first |
 | Using `any` for node data | Define specific data types per node type |

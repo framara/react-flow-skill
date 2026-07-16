@@ -70,7 +70,7 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 - Multiple handles on same side overlap -> position them with CSS (`top` offset) and assign unique `id`s.
 - State updates don't reflect in nodes -> creating mutations instead of new objects; spread operator required.
 - Zustand context warning -> two versions of `@xyflow/react` installed or missing `<ReactFlowProvider>`.
-- Sub-flow child nodes render behind parent -> ensure parent nodes appear before children in the `nodes` array.
+- Sub-flow children mispositioned with "Parent node not found" warning -> ensure parent nodes appear before children in the `nodes` array.
 
 ## Verification checklist
 

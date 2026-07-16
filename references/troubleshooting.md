@@ -254,9 +254,9 @@ setNodes((nodes) =>
 );
 ```
 
-### Sub-flow children render behind parent
+### Sub-flow children mispositioned ("Parent node not found" warning)
 
-**Cause**: Parent nodes must appear before children in the `nodes` array.
+**Cause**: Parent nodes must appear before children in the `nodes` array. If a child comes first, React Flow logs a console warning ("Parent node ... not found") and positions the child incorrectly.
 
 **Fix**: Sort nodes so parents come first:
 
@@ -344,7 +344,7 @@ Logs internal state changes to the console.
 
 ### React Flow DevTools
 
-Install the React Flow DevTools browser extension for visual debugging of nodes, edges, and viewport state.
+There is no browser extension — the [Devtools and Debugging guide](https://reactflow.dev/learn/advanced-use/devtools-and-debugging) shows how to build small devtools panel components (ViewportLogger, NodeInspector, ChangeLogger) for visual debugging of nodes, edges, and viewport state.
 
 ### Common debug pattern
 

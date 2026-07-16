@@ -54,7 +54,7 @@ import { Background, BackgroundVariant } from '@xyflow/react';
 |------|------|---------|-------------|
 | `variant` | `BackgroundVariant` | `Dots` | `Dots`, `Lines`, or `Cross` |
 | `gap` | `number \| [number, number]` | `20` | Grid gap size |
-| `size` | `number` | `1` | Dot size or line stroke width |
+| `size` | `number` | `1` (dots), `6` (cross) | Dot/cross size (ignored for lines — use `lineWidth`) |
 | `color` | `string` | — | Pattern color |
 | `lineWidth` | `number` | `1` | Line width (Lines/Cross) |
 | `offset` | `number` | `0` | Pattern offset |
@@ -123,13 +123,13 @@ import { MiniMap } from '@xyflow/react';
 | `nodeStrokeWidth` | `number` | `2` | Node stroke width |
 | `nodeBorderRadius` | `number` | `5` | Node border radius |
 | `maskColor` | `string` | `'rgb(240, 240, 240, 0.6)'` | Viewport mask color |
-| `maskStrokeColor` | `string` | `'none'` | Viewport mask stroke |
+| `maskStrokeColor` | `string` | `'transparent'` | Viewport mask stroke |
 | `maskStrokeWidth` | `number` | `1` | Viewport mask stroke width |
 | `pannable` | `boolean` | `false` | Pan viewport via minimap |
 | `zoomable` | `boolean` | `false` | Zoom viewport via minimap |
 | `position` | `PanelPosition` | `'bottom-right'` | Position on canvas |
 | `inversePan` | `boolean` | `false` | Invert pan direction |
-| `zoomStep` | `number` | `10` | Zoom step on scroll |
+| `zoomStep` | `number` | `1` | Zoom step on scroll (docs claim 10; runtime default is 1) |
 
 ### Panel
 
@@ -151,6 +151,8 @@ import { Panel } from '@xyflow/react';
 | `'top-left'` | Top left corner |
 | `'top-center'` | Top center |
 | `'top-right'` | Top right corner |
+| `'center-left'` | Center left edge |
+| `'center-right'` | Center right edge |
 | `'bottom-left'` | Bottom left corner |
 | `'bottom-center'` | Bottom center |
 | `'bottom-right'` | Bottom right corner |
@@ -208,8 +210,8 @@ function ResizableNode({ data, selected }) {
 |------|------|---------|-------------|
 | `minWidth` | `number` | `10` | Minimum width |
 | `minHeight` | `number` | `10` | Minimum height |
-| `maxWidth` | `number` | `Infinity` | Maximum width |
-| `maxHeight` | `number` | `Infinity` | Maximum height |
+| `maxWidth` | `number` | `Number.MAX_VALUE` | Maximum width |
+| `maxHeight` | `number` | `Number.MAX_VALUE` | Maximum height |
 | `isVisible` | `boolean` | `true` | Show resize handles |
 | `color` | `string` | — | Handle color |
 | `handleStyle` | `CSSProperties` | — | Handle styles |
@@ -253,7 +255,7 @@ import { ViewportPortal } from '@xyflow/react';
 
 | Hook | Returns | Description |
 |------|---------|-------------|
-| `useNodeId()` | `string` | Current node's ID (use inside custom nodes) |
+| `useNodeId()` | `string \| null` | Current node's ID (use inside custom nodes) |
 | `useNodesData(ids)` | `NodeData[]` | Data for specific node IDs |
 | `useNodesInitialized()` | `boolean` | True after all nodes are measured |
 | `useInternalNode(id)` | `InternalNode` | Internal node with computed bounds |
@@ -363,7 +365,7 @@ Accessed via `useReactFlow()`. See `references/state-management.md` for full pat
 | `toObject()` | `() => { nodes, edges, viewport }` | Serialize flow state |
 | `getNodesBounds(nodes)` | `(Node[] \| string[]) => Rect` | Get bounding box |
 | `getHandleConnections({ type, nodeId, id? })` | Returns `HandleConnection[]` | Get handle connections |
-| `getNodeConnections({ handleType?, nodeId, handleId? })` | Returns `NodeConnection[]` | Get node connections |
+| `getNodeConnections({ type?, nodeId, handleId? })` | Returns `NodeConnection[]` | Get node connections |
 
 ## Controlled viewport
 

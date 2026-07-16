@@ -184,13 +184,13 @@ function LabeledEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
 ```tsx
 import { BaseEdge, EdgeToolbar, getBezierPath } from '@xyflow/react';
 
-function ToolbarEdge(props) {
-  const [edgePath] = getBezierPath(props);
+function ToolbarEdge({ id, ...props }) {
+  const [edgePath, labelX, labelY] = getBezierPath(props);
 
   return (
     <>
-      <BaseEdge id={props.id} path={edgePath} />
-      <EdgeToolbar>
+      <BaseEdge id={id} path={edgePath} />
+      <EdgeToolbar edgeId={id} x={labelX} y={labelY}>
         <button>Edit</button>
         <button>Delete</button>
       </EdgeToolbar>

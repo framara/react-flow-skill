@@ -33,6 +33,7 @@ Best for tree-shaped graphs with straightforward requirements.
 
 ```tsx
 import dagre from '@dagrejs/dagre';
+import { Position } from '@xyflow/react';
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
@@ -61,8 +62,8 @@ function getLayoutedElements(nodes, edges, direction = 'TB') {
         x: nodeWithPosition.x - (node.measured?.width ?? 172) / 2,
         y: nodeWithPosition.y - (node.measured?.height ?? 36) / 2,
       },
-      targetPosition: isHorizontal ? 'left' : 'top',
-      sourcePosition: isHorizontal ? 'right' : 'bottom',
+      targetPosition: isHorizontal ? Position.Left : Position.Top,
+      sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
     };
   });
 
@@ -187,6 +188,8 @@ Best for organic, physics-based layouts with interactive simulation.
 ```tsx
 import { forceSimulation, forceLink, forceManyBody, forceX, forceY } from 'd3-force';
 
+type SimNode = { id: string; x: number; y: number };
+
 function useLayoutedElements() {
   const { getNodes, getEdges, setNodes } = useReactFlow();
 
@@ -194,17 +197,32 @@ function useLayoutedElements() {
     const nodes = getNodes();
     const edges = getEdges();
 
-    const simulation = forceSimulation(nodes)
-      .force('link', forceLink(edges).id((d) => d.id).distance(100))
+    // Seed the simulation from current positions so the layout refines them
+    // instead of restarting from d3's default phyllotaxis spiral every run
+    const simulationNodes: SimNode[] = nodes.map((node) => ({
+      id: node.id,
+      x: node.position.x,
+      y: node.position.y,
+    }));
+
+    const simulation = forceSimulation(simulationNodes)
+      .force(
+        'link',
+        forceLink<SimNode, { source: string; target: string }>(
+          edges.map((e) => ({ source: e.source, target: e.target })),
+        )
+          .id((d) => d.id)
+          .distance(100),
+      )
       .force('charge', forceManyBody().strength(-200))
       .force('x', forceX().strength(0.05))
       .force('y', forceY().strength(0.05));
 
     simulation.on('end', () => {
       setNodes(
-        nodes.map((node) => ({
+        nodes.map((node, i) => ({
           ...node,
-          position: { x: node.x, y: node.y },
+          position: { x: simulationNodes[i].x ?? 0, y: simulationNodes[i].y ?? 0 },
         })),
       );
     });

@@ -87,18 +87,18 @@ export default useFlowStore;
 Wire up the keyboard shortcuts and undo/redo actions:
 
 ```tsx
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import { ReactFlow } from '@xyflow/react';
-import { useTemporalStore } from 'zundo';
 import useFlowStore from './store';
 
 function Flow() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useFlowStore();
-  const { undo, redo } = useTemporalStore((state) => state);
+  // Zundo attaches a `temporal` store to the hook — read it non-reactively
+  const { undo, redo } = useFlowStore.temporal.getState();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) {
           redo();
@@ -139,11 +139,11 @@ export function useUndoRedo(maxHistory = 100) {
   const future = useRef<Snapshot[]>([]);
 
   const takeSnapshot = useCallback((nodes: Node[], edges: Edge[]) => {
-    past.current = past.current.slice(-maxHistory);
     past.current.push({
       nodes: structuredClone(nodes),
       edges: structuredClone(edges),
     });
+    past.current = past.current.slice(-maxHistory);
     // Any new action clears the redo stack
     future.current = [];
   }, [maxHistory]);
@@ -406,12 +406,17 @@ import {
   useNodeConnections,
   useNodesData,
   type NodeProps,
+  type Node,
 } from '@xyflow/react';
 
-function UppercaseNode({ id }: NodeProps) {
+type UppercaseNodeData = { text: string };
+
+function UppercaseNode({ id }: NodeProps<Node<UppercaseNodeData>>) {
   const { updateNodeData } = useReactFlow();
   const connections = useNodeConnections({ handleType: 'target' });
-  const sourceData = useNodesData(connections.map((c) => c.source));
+  const sourceData = useNodesData<Node<UppercaseNodeData>>(
+    connections.map((c) => c.source),
+  );
 
   useEffect(() => {
     const inputText = sourceData[0]?.data?.text ?? '';
@@ -434,11 +439,19 @@ export default memo(UppercaseNode);
 
 ```tsx
 import { memo } from 'react';
-import { Handle, Position, useNodeConnections, useNodesData } from '@xyflow/react';
+import {
+  Handle,
+  Position,
+  useNodeConnections,
+  useNodesData,
+  type Node,
+} from '@xyflow/react';
 
 function ResultNode() {
   const connections = useNodeConnections({ handleType: 'target' });
-  const nodesData = useNodesData(connections.map((c) => c.source));
+  const nodesData = useNodesData<Node<{ text: string }>>(
+    connections.map((c) => c.source),
+  );
 
   return (
     <div>
@@ -460,10 +473,14 @@ export default memo(ResultNode);
 A node can route data to different handles based on computation:
 
 ```tsx
-function BranchNode({ id }: NodeProps) {
+type BranchNodeData = { high: number | null; low: number | null };
+
+function BranchNode({ id }: NodeProps<Node<BranchNodeData>>) {
   const { updateNodeData } = useReactFlow();
   const connections = useNodeConnections({ handleType: 'target' });
-  const sourceData = useNodesData(connections.map((c) => c.source));
+  const sourceData = useNodesData<Node<{ value: number }>>(
+    connections.map((c) => c.source),
+  );
 
   useEffect(() => {
     const value = sourceData[0]?.data?.value ?? 0;
@@ -642,7 +659,7 @@ function LimitedHandle({
 }: HandleProps & { connectionCount?: number }) {
   const connections = useNodeConnections({
     handleType: props.type,
-    handleId: props.id,
+    handleId: props.id ?? undefined,
   });
 
   return (
@@ -664,11 +681,20 @@ Show different content based on the current zoom level. Use `useStore` with a se
 
 ```tsx
 import { memo } from 'react';
-import { Handle, Position, useStore } from '@xyflow/react';
+import {
+  Handle,
+  Position,
+  useStore,
+  type Node,
+  type NodeProps,
+  type ReactFlowState,
+} from '@xyflow/react';
+
+type DetailNodeData = { label: string; description: string; items: string[] };
 
 const showDetailSelector = (state: ReactFlowState) => state.transform[2] >= 0.9;
 
-function DetailNode({ data }: NodeProps) {
+function DetailNode({ data }: NodeProps<Node<DetailNodeData>>) {
   const showDetail = useStore(showDetailSelector);
 
   return (
@@ -703,9 +729,9 @@ Before building multiplayer, decide what to sync:
 
 | Category | Properties | Sync? |
 |----------|-----------|-------|
-| **Durable** | `id`, `type`, `data`, `position`, `source`, `target`, `sourceHandle`, `targetHandle` | Always sync and persist |
+| **Durable** | `id`, `type`, `data`, `position`, `width`/`height` (user-set), `source`, `target`, `sourceHandle`, `targetHandle` | Always sync and persist |
 | **Ephemeral** | `dragging`, `resizing`, cursor positions | Sync for UX (other users see activity), do not persist |
-| **Never sync** | `selected`, `measured`, `width`/`height` (computed) | Local per-user state |
+| **Never sync** | `selected`, `measured` (computed dimensions) | Local per-user state |
 
 ### Architecture with Yjs (CRDT)
 

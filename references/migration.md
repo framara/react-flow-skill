@@ -136,14 +136,14 @@ const onNodesChange: OnNodesChange<AppNode> = useCallback(
 |-----|-----|-------|
 | `useNodesState` | Still available | Works the same way |
 | `useEdgesState` | Still available | Works the same way |
-| `useHandleConnections` | `useNodeConnections` | Renamed |
 | `useReactFlow().project()` | `useReactFlow().screenToFlowPosition()` | Renamed |
 | `useReactFlow().setTransform()` | `useReactFlow().setViewport()` | Renamed (from v10) |
 
 New hooks in v12 (no v11 equivalent):
 
 - `useNodesData(nodeIds)` — subscribe to data changes on specific nodes
-- `useUpdateNodeInternals()` — trigger handle recalculation after dynamic changes
+
+Note: `useHandleConnections` is a v12-only hook (introduced in 12.0, deprecated in 12.4) — you won't find it in v11 code. Use `useNodeConnections` instead.
 
 ## Step-by-step checklist
 
@@ -156,7 +156,7 @@ New hooks in v12 (no v11 equivalent):
 4. Update custom node components: `xPos` → `positionAbsoluteX`, `yPos` → `positionAbsoluteY`
 5. Audit all `setNodes` / `setEdges` calls for mutations — convert to spread-based immutable updates
 6. Update TypeScript types to use the new `Node<Data, Type>` union pattern
-7. Rename deprecated hooks: `useHandleConnections` → `useNodeConnections`
+7. If you've already adopted `useHandleConnections` (v12-only, deprecated in 12.4), replace it with `useNodeConnections`
 8. Test that the flow renders correctly (check for blank canvas = missing CSS or container dimensions)
 
 ## Do / Don't
