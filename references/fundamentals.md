@@ -27,7 +27,7 @@ Always import the stylesheet — without it, nodes and edges will not render cor
 import '@xyflow/react/dist/style.css';
 ```
 
-For custom styling frameworks (Tailwind, styled-components), import only base styles:
+If replacing the built-in visual styles yourself, use base styles instead. Tailwind does not require this choice:
 
 ```tsx
 import '@xyflow/react/dist/base.css';
@@ -51,7 +51,7 @@ const initialEdges = [
 export default function App() {
   return (
     <div style={{ width: '100%', height: '100vh' }}>
-      <ReactFlow nodes={initialNodes} edges={initialEdges} fitView>
+      <ReactFlow defaultNodes={initialNodes} defaultEdges={initialEdges} fitView>
         <Background />
         <Controls />
       </ReactFlow>
@@ -59,6 +59,8 @@ export default function App() {
   );
 }
 ```
+
+This minimal example is uncontrolled, so dragging and connecting work without external state handlers.
 
 **Critical**: The parent `<div>` must have explicit width and height. Without this, nothing renders.
 
@@ -235,7 +237,7 @@ Key viewport props on `<ReactFlow>`:
 
 - Do import `@xyflow/react/dist/style.css` in every project.
 - Do set explicit width/height on the parent container.
-- Do use controlled flows for applications with user interaction.
+- Do use controlled flows when application state must coordinate graph changes; uncontrolled flows also support user interaction.
 - Don't define `nodeTypes` or `edgeTypes` inside a component render function.
 - Don't mutate nodes or edges directly — always create new objects.
 - Don't use `defaultNodes`/`defaultEdges` alongside `nodes`/`edges` — pick one pattern.

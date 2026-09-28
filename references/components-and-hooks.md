@@ -18,7 +18,7 @@ Use this file when working with React Flow's built-in UI components (Background,
 
 Required when:
 - Using hooks like `useReactFlow` outside the `<ReactFlow>` component
-- Multiple flows on the same page
+- External hook consumers for a flow; give each independent flow its own provider (never share one provider between two flows)
 - Client-side routing with flow state
 
 ```tsx
@@ -34,7 +34,7 @@ function App() {
 }
 ```
 
-**Rule**: The provider must wrap the component containing `<ReactFlow>`, not be inside it.
+**Rule**: A hook must run below its provider in the React tree. `<ReactFlow>` provides context to its descendants; a component calling hooks before returning `<ReactFlow>` needs an outer `<ReactFlowProvider>`.
 
 ## Built-in components
 
@@ -57,7 +57,7 @@ import { Background, BackgroundVariant } from '@xyflow/react';
 | `size` | `number` | `1` (dots), `6` (cross) | Dot/cross size (ignored for lines — use `lineWidth`) |
 | `color` | `string` | — | Pattern color |
 | `lineWidth` | `number` | `1` | Line width (Lines/Cross) |
-| `offset` | `number` | `0` | Pattern offset |
+| `offset` | `number \| [number, number]` | `0` | Pattern offset |
 
 ### Controls
 
@@ -167,7 +167,7 @@ import { NodeToolbar, Position } from '@xyflow/react';
 function CustomNode({ data }) {
   return (
     <>
-      <NodeToolbar position={Position.Top} isVisible>
+      <NodeToolbar position={Position.Top}>
         <button>Copy</button>
         <button>Delete</button>
       </NodeToolbar>
@@ -218,7 +218,7 @@ function ResizableNode({ data, selected }) {
 | `lineStyle` | `CSSProperties` | — | Border line styles |
 | `keepAspectRatio` | `boolean` | `false` | Maintain aspect ratio |
 
-`NodeResizeControl` provides a single resize control (e.g., bottom-right only).
+`NodeResizeControl` provides a single resize control (e.g., bottom-right only). In v12.12+, `onResizeEnd` is paired with `onResizeStart` even when `shouldResize` rejects a resize; do not treat an end callback alone as proof that dimensions changed.
 
 ### ViewportPortal
 
@@ -258,7 +258,7 @@ import { ViewportPortal } from '@xyflow/react';
 | `useNodeId()` | `string \| null` | Current node's ID (use inside custom nodes) |
 | `useNodesData(ids)` | `NodeData[]` | Data for specific node IDs |
 | `useNodesInitialized()` | `boolean` | True after all nodes are measured |
-| `useInternalNode(id)` | `InternalNode` | Internal node with computed bounds |
+| `useInternalNode(id)` | `InternalNode \| undefined` | Internal node with computed bounds |
 | `useUpdateNodeInternals()` | `(id) => void` | Refresh node after handle changes |
 
 ### Connection hooks
@@ -267,7 +267,7 @@ import { ViewportPortal } from '@xyflow/react';
 |------|---------|-------------|
 | `useConnection()` | `ConnectionState` | Active connection state during drag |
 | `useHandleConnections({ type, id? })` | `HandleConnection[]` | Connections for a specific handle (**deprecated** — use `useNodeConnections`) |
-| `useNodeConnections({ handleType?, handleId? })` | `NodeConnection[]` | All connections for the current node |
+| `useNodeConnections({ id?, handleType?, handleId? })` | `NodeConnection[]` | Connections for the current node, or explicit `id`; `handleId` requires `handleType` (v12.11+) |
 
 ### Event hooks
 
@@ -385,13 +385,15 @@ const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
 
 ```tsx
 function PanToNode() {
-  const { getNode, setCenter } = useReactFlow();
+  const { getNode, getNodesBounds, setCenter } = useReactFlow();
 
   const panTo = (nodeId: string) => {
     const node = getNode(nodeId);
     if (node) {
-      const x = node.position.x + (node.measured?.width ?? 0) / 2;
-      const y = node.position.y + (node.measured?.height ?? 0) / 2;
+      // Instance bounds account for parent-relative positions and node origin.
+      const bounds = getNodesBounds([node]);
+      const x = bounds.x + bounds.width / 2;
+      const y = bounds.y + bounds.height / 2;
       setCenter(x, y, { zoom: 1.5, duration: 500 });
     }
   };
@@ -399,6 +401,8 @@ function PanToNode() {
   return <button onClick={() => panTo('node-1')}>Focus Node 1</button>;
 }
 ```
+
+Place the button in a `<Panel>` if rendered inside `<ReactFlow>`, or in a sibling under the same provider.
 
 ## Check viewport initialization
 

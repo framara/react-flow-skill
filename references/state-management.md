@@ -307,7 +307,9 @@ const saveFlow = () => {
 const { setNodes, setEdges, setViewport } = useReactFlow();
 
 const restoreFlow = () => {
-  const data = JSON.parse(localStorage.getItem('flow'));
+  const json = localStorage.getItem('flow');
+  if (!json) return;
+  const data = JSON.parse(json);
   if (data) {
     setNodes(data.nodes);
     setEdges(data.edges);
@@ -315,6 +317,8 @@ const restoreFlow = () => {
   }
 };
 ```
+
+For application persistence, validate the complete payload and handle parse/storage errors before replacing state; see `advanced-patterns.md` for serialization constraints.
 
 ## Do / Don't
 

@@ -44,7 +44,7 @@ export default defineConfig({
 });
 ```
 
-For Next.js, change the command and port:
+For Next.js, change the server port **and** `use.baseURL` to `http://localhost:3000`:
 
 ```ts
 webServer: {
@@ -195,7 +195,7 @@ export default function TestFlow() {
 }
 ```
 
-**Critical**: The container `div` must have explicit dimensions. Using `fitView` ensures all nodes are visible regardless of screen size, making tests deterministic.
+Give the container known dimensions and fix the browser viewport. Wait for initial measurement and `fitView` before geometry assertions; `minZoom`, padding, and node size can prevent every node fitting on small screens.
 
 ## Node tests
 
@@ -216,7 +216,7 @@ test('select a node by clicking', async ({ page }) => {
 
 ### Drag a node
 
-**Critical**: Use `{ steps: 5 }` (or more) in `page.mouse.move`. Single-step moves do not trigger React Flow's drag handlers because React Flow requires multiple `mousemove` events.
+Use several intermediate mouse moves (for example `{ steps: 5 }`) to model a realistic drag and cross the configured drag threshold. Five is a test helper default, not an API requirement. Wait for initial measurement/fit before recording coordinates.
 
 ```ts
 test('drag a node changes its position', async ({ page }) => {
@@ -281,9 +281,9 @@ test('select an edge', async ({ page }) => {
   const edge = page.locator('.react-flow__edge[data-id="edge-1-2"]');
   await expect(edge).toBeAttached();
 
-  // Click the interaction area (wider invisible path)
+  // A curved path's bounding-box center may not lie on its stroke.
   const interactionPath = edge.locator('.react-flow__edge-interaction');
-  await interactionPath.click();
+  await clickEdgePath(page, interactionPath); // helper below
   await expect(edge).toHaveClass(/selected/);
 });
 ```
@@ -311,7 +311,7 @@ test('delete a selected edge', async ({ page }) => {
   const interactionPath = page
     .locator('.react-flow__edge[data-id="edge-1-2"]')
     .locator('.react-flow__edge-interaction');
-  await interactionPath.click();
+  await clickEdgePath(page, interactionPath);
   await page.keyboard.press('Backspace');
 
   await expect(edges).toHaveCount(0);
@@ -336,7 +336,7 @@ test('new edge appears after connection', async ({ page }) => {
 
 ### Handle-to-handle connection
 
-**Critical**: Use `{ steps: 5 }` in `page.mouse.move` — single-step moves skip React Flow's internal event processing and the connection will not register.
+Use intermediate mouse moves to exercise the drag gesture reliably. Wait for both handles to be visible and the initial viewport to settle before reading their coordinates.
 
 ```ts
 test('connect two nodes via handles', async ({ page }) => {
@@ -416,8 +416,9 @@ test('pan by dragging the pane', async ({ page }) => {
   // Drag on the pane (empty area)
   const pane = page.locator('.react-flow__pane');
   const paneBox = await pane.boundingBox();
-  const startX = paneBox!.x + paneBox!.width / 2;
-  const startY = paneBox!.y + paneBox!.height / 2;
+  // Fixture-specific empty corner; the center could be covered by a node.
+  const startX = paneBox!.x + 20;
+  const startY = paneBox!.y + 20;
 
   await page.mouse.move(startX, startY);
   await page.mouse.down();
@@ -450,11 +451,8 @@ test('zoom in with mouse wheel', async ({ page }) => {
   // Negative deltaY = zoom in
   await page.mouse.wheel(0, -200);
 
-  // Wait for zoom animation to settle
-  await page.waitForTimeout(300);
-
-  const afterTransform = await getTransform(page);
-  expect(afterTransform.scale).toBeGreaterThan(beforeTransform.scale);
+  await expect.poll(async () => (await getTransform(page)).scale)
+    .toBeGreaterThan(beforeTransform.scale);
 });
 ```
 
@@ -476,19 +474,13 @@ test('zoom respects minZoom and maxZoom', async ({ page }) => {
   for (let i = 0; i < 20; i++) {
     await page.mouse.wheel(0, -200);
   }
-  await page.waitForTimeout(300);
-
-  const maxTransform = await getTransform(page);
-  expect(maxTransform.scale).toBeLessThanOrEqual(2);
+  await expect.poll(async () => (await getTransform(page)).scale).toBeCloseTo(2, 5);
 
   // Zoom out aggressively
   for (let i = 0; i < 40; i++) {
     await page.mouse.wheel(0, 200);
   }
-  await page.waitForTimeout(300);
-
-  const minTransform = await getTransform(page);
-  expect(minTransform.scale).toBeGreaterThanOrEqual(0.5);
+  await expect.poll(async () => (await getTransform(page)).scale).toBeCloseTo(0.5, 5);
 });
 ```
 
@@ -500,13 +492,15 @@ test('fitView makes all nodes visible', async ({ page }) => {
 
   // With fitView on the fixture, all nodes should be within the viewport
   const nodes = page.locator('.react-flow__node');
-  const count = await nodes.count();
-
-  for (let i = 0; i < count; i++) {
-    await expect(nodes.nth(i)).toBeVisible();
+  await expect(nodes).toHaveCount(3); // prevent a vacuous pass before mount
+  // Allow subpixel rounding in the browser's intersection ratio.
+  for (let i = 0; i < 3; i++) {
+    await expect(nodes.nth(i)).toBeInViewport({ ratio: 0.999 });
   }
 });
 ```
+
+`toBeVisible()` only checks that an element has a visible box; it does not prove viewport intersection. For an embedded canvas, also compare node bounds with the canvas container bounds, not only the browser viewport.
 
 ## Toolbar and overlay tests
 
@@ -559,7 +553,7 @@ test('toolbar is positioned above the node', async ({ page }) => {
 | `await expect(locator).toHaveCount(n)` | Wait for exact number of elements (e.g., edge count after connection) |
 | `await expect(locator).toHaveClass(/selected/)` | Wait for class change (e.g., after clicking a node) |
 | `await expect(locator).toHaveAttribute(attr, val)` | Wait for attribute value (e.g., edge markers) |
-| `page.waitForTimeout(ms)` | **Last resort** — only for animations with no observable state change (e.g., zoom settle) |
+| `expect.poll(...)` | Wait for observable geometry/viewport changes, including zoom animations |
 
 **Prefer assertion-based waits** (`expect` with auto-retry) over `waitForTimeout`. Assertion-based waits are faster (they resolve as soon as the condition is met) and more reliable (they don't depend on timing).
 
@@ -575,6 +569,28 @@ await expect(page.locator('.react-flow__node')).toHaveCount(3);
 ```
 
 ## Helper utilities
+
+### clickEdgePath
+
+Click an actual point on a curved SVG path rather than its bounding-box center. Choose a different fraction if a node or overlay covers the midpoint.
+
+```ts
+async function clickEdgePath(
+  page: import('@playwright/test').Page,
+  path: import('@playwright/test').Locator,
+) {
+  await expect(path).toBeAttached();
+  const point = await path.evaluate((element) => {
+    const svgPath = element as SVGPathElement;
+    const matrix = svgPath.getScreenCTM();
+    if (!matrix) throw new Error('Edge has no screen transform');
+    const p = svgPath.getPointAtLength(svgPath.getTotalLength() / 2);
+    return { x: matrix.a * p.x + matrix.c * p.y + matrix.e,
+             y: matrix.b * p.x + matrix.d * p.y + matrix.f };
+  });
+  await page.mouse.click(point.x, point.y);
+}
+```
 
 ### getTransform
 
@@ -717,7 +733,7 @@ test.describe('node interactions', () => {
 
 ## Do / Don't
 
-- Do use `{ steps: 5 }` (or more) in `page.mouse.move` for drag operations — single-step moves don't trigger React Flow's drag handlers.
+- Do use intermediate mouse moves for representative drag gestures and verify the resulting state.
 - Do use `getTransform()` with `DOMMatrix` to read viewport position and scale — never parse CSS transform strings manually.
 - Do use combined selectors like `.react-flow__node[data-id="node-1"]` for targeting specific elements.
 - Do use `fitView` in test fixtures for deterministic starting positions.
@@ -726,5 +742,5 @@ test.describe('node interactions', () => {
 - Do give the container explicit dimensions (`100vw` x `100vh`) in test fixtures.
 - Don't use `waitForTimeout` as a primary wait strategy — it's slow and flaky.
 - Don't assert exact pixel coordinates — use bounding box comparisons (before vs. after) instead.
-- Don't click edge paths directly — use `.react-flow__edge-interaction` for reliable edge clicking.
+- Do click a point on `.react-flow__edge-interaction`; a curved path's bounding-box center can miss its stroke.
 - Don't forget to `await expect(...).toBeAttached()` before reading `boundingBox()` — the element may not be in the DOM yet.

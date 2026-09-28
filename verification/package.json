@@ -1,0 +1,27 @@
+{
+  "name": "react-flow-skill-verification",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "check:docs": "node ../scripts/check-docs.mjs",
+    "check:examples": "node ../scripts/verify-examples.mjs",
+    "check:evals": "node ../scripts/check-evals.mjs",
+    "test": "npm run check:docs && npm run check:examples && npm run check:evals"
+  },
+  "devDependencies": {
+    "@dagrejs/dagre": "3.1.1",
+    "@playwright/test": "1.63.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@xyflow/react": "12.12.0",
+    "github-slugger": "2.0.0",
+    "markdown-it": "14.1.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.1",
+    "yaml": "2.8.1"
+  }
+}

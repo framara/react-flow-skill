@@ -72,6 +72,7 @@ const useFlowStore = create<FlowState>()(
       setEdges: (edges) => set({ edges }),
     })),
     {
+      limit: 100,
       // Only track nodes and edges in history, not handler functions
       partialize: (state) => ({
         nodes: state.nodes,
@@ -120,6 +121,10 @@ function Flow() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      const target = e.target;
+      if (!(target instanceof HTMLElement) ||
+          target.closest('input, textarea, select') || target.isContentEditable) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) {
@@ -148,7 +153,9 @@ function Flow() {
 }
 ```
 
-Zundo records every Zustand setter call by default. Because dragging emits many `onNodesChange` calls, pause temporal tracking during the gesture and append the pre-drag snapshot once on drag stop. Apply the same transaction-boundary idea to resize gestures and other continuous interactions.
+These are history integration sketches, not a complete editor transaction system. Scope keyboard listeners to the active editor when a page has multiple editors. `structuredClone` requires cloneable data; functions and React elements need a domain-specific snapshot representation. Manual ref-based `canUndo`/`canRedo` queries do not subscribe UI buttons to history changes.
+
+Zundo records every Zustand setter call by default. Because dragging emits many `onNodesChange` calls, pause temporal tracking during the gesture and append the pre-drag snapshot once on drag stop. Apply the same transaction-boundary idea to resize gestures and other continuous interactions. Selection, measurement, and final drag change events also reach the store: filter transient changes and test that one gesture produces one undo step before using this in an editor.
 
 ### Without Zundo (manual implementation)
 
@@ -235,13 +242,18 @@ let idCounter = 0;
 const newId = () => `pasted_${Date.now()}_${idCounter++}`;
 
 export function useCopyPaste() {
-  const { getNodes, getEdges, setNodes, setEdges } = useReactFlow();
+  const { getNodes, getEdges, setNodes, setEdges, deleteElements } = useReactFlow();
   const clipboard = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
 
   const copy = useCallback(() => {
-    const selectedNodes = getNodes().filter((n) => n.selected);
-    const selectedNodeIds = new Set(selectedNodes.map((n) => n.id));
-    // Only copy edges where both source and target are selected
+    const nodes = getNodes(); // Keep React Flow's parent-before-child ordering.
+    const selectedNodeIds = new Set(nodes.filter((n) => n.selected).map((n) => n.id));
+    // Copy descendants with their selected parent, including nested groups.
+    for (const node of nodes) {
+      if (node.parentId && selectedNodeIds.has(node.parentId)) selectedNodeIds.add(node.id);
+    }
+    const selectedNodes = nodes.filter((n) => selectedNodeIds.has(n.id));
+    // Copy edges whose endpoints are both included in the clipboard
     const selectedEdges = getEdges().filter(
       (e) => selectedNodeIds.has(e.source) && selectedNodeIds.has(e.target),
     );
@@ -251,44 +263,49 @@ export function useCopyPaste() {
     };
   }, [getNodes, getEdges]);
 
-  const cut = useCallback(() => {
+  const cut = useCallback(async () => {
     copy();
-    const selected = getNodes().filter((n) => n.selected);
-    const selectedIds = new Set(selected.map((n) => n.id));
-    setNodes((nodes) => nodes.filter((n) => !selectedIds.has(n.id)));
-    setEdges((edges) =>
-      edges.filter(
-        (e) => !selectedIds.has(e.source) && !selectedIds.has(e.target),
-      ),
-    );
-  }, [copy, getNodes, setNodes, setEdges]);
+    // Respects deletable/onBeforeDelete and cleans up child nodes and edges.
+    await deleteElements({ nodes: getNodes().filter((n) => n.selected) });
+  }, [copy, getNodes, deleteElements]);
 
   const paste = useCallback(
     (position?: { x: number; y: number }) => {
-      if (!clipboard.current) return;
+      if (!clipboard.current?.nodes.length) return;
 
-      const { nodes: copiedNodes, edges: copiedEdges } = clipboard.current;
+      // Each paste owns its data; do not share nested objects with the clipboard.
+      const { nodes: copiedNodes, edges: copiedEdges } = structuredClone(clipboard.current);
       // Map old IDs to new IDs
       const idMap = new Map<string, string>();
       copiedNodes.forEach((n) => idMap.set(n.id, newId()));
 
-      // Calculate offset: place relative to original centroid, shifted
+      // Only top-level copied nodes move; copied children retain local coordinates.
+      const roots = copiedNodes.filter((n) => !n.parentId || !idMap.has(n.parentId));
+      // An explicit position is in flow space; reject it for children whose
+      // parent is outside the clipboard (their positions are parent-relative).
+      if (position && roots.some((n) => n.parentId)) return;
       const offset = position
         ? (() => {
             const avgX =
-              copiedNodes.reduce((sum, n) => sum + n.position.x, 0) /
-              copiedNodes.length;
+              roots.reduce((sum, n) => sum + n.position.x, 0) /
+              roots.length;
             const avgY =
-              copiedNodes.reduce((sum, n) => sum + n.position.y, 0) /
-              copiedNodes.length;
+              roots.reduce((sum, n) => sum + n.position.y, 0) /
+              roots.length;
             return { x: position.x - avgX, y: position.y - avgY };
           })()
         : { x: 50, y: 50 };
 
+      // If an uncopied parent was deleted since copy, decline this paste.
+      const currentIds = new Set(getNodes().map((n) => n.id));
+      if (roots.some((n) => n.parentId && !currentIds.has(n.parentId))) return;
+
       const newNodes = copiedNodes.map((n) => ({
         ...n,
         id: idMap.get(n.id)!,
-        position: { x: n.position.x + offset.x, y: n.position.y + offset.y },
+        position: n.parentId && idMap.has(n.parentId)
+          ? n.position
+          : { x: n.position.x + offset.x, y: n.position.y + offset.y },
         selected: true,
         dragging: false,
         ...(n.parentId && idMap.has(n.parentId)
@@ -311,12 +328,14 @@ export function useCopyPaste() {
         [...edges.map((e) => ({ ...e, selected: false })), ...newEdges],
       );
     },
-    [setNodes, setEdges],
+    [getNodes, setNodes, setEdges],
   );
 
   return { copy, cut, paste };
 }
 ```
+
+Copied groups include descendants and retain their relative positions. Copying a child alone keeps it under its original parent; this sketch declines explicit flow-space placement or pasting after that parent was deleted. Convert to absolute coordinates and detach deliberately if your editor needs that behavior.
 
 Wire up keyboard shortcuts:
 
@@ -325,8 +344,11 @@ const { copy, cut, paste } = useCopyPaste();
 
 useEffect(() => {
   const onKeyDown = (e: KeyboardEvent) => {
-    // Skip if user is typing in an input
-    if ((e.target as HTMLElement).closest('input, textarea, select')) return;
+    // Leave native text editing and IME composition alone.
+    if (e.defaultPrevented || e.isComposing) return;
+    const target = e.target;
+    if (!(target instanceof HTMLElement) ||
+        target.closest('input, textarea, select') || target.isContentEditable) return;
 
     if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
       copy();
@@ -383,7 +405,7 @@ interface ReactFlowJsonObject<NodeType, EdgeType> {
 }
 ```
 
-This is JSON-serializable and works with `localStorage`, databases, or file exports.
+The returned object is JSON-serializable only if the node/edge data and labels are. Keep persisted data separate from functions, React elements, and runtime state. On restore, parse and validate the payload before replacing either array; handle malformed data, storage failures, and schema migrations in the application.
 
 ## Computed flows (reactive data pipelines)
 
@@ -398,20 +420,26 @@ Build nodes that react to data from connected nodes. Three hooks work together:
 ### Input node (writes data)
 
 ```tsx
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Handle, Position, useReactFlow, type NodeProps, type Node } from '@xyflow/react';
 
 type TextNodeData = { text: string };
 
 function TextNode({ id, data }: NodeProps<Node<TextNodeData>>) {
   const { updateNodeData } = useReactFlow();
+  const [text, setText] = useState(data.text);
+  // Reflect external changes such as undo/restore.
+  useEffect(() => setText(data.text), [data.text]);
 
   return (
     <div className="nodrag">
       <Handle type="source" position={Position.Right} />
       <input
-        value={data.text}
-        onChange={(e) => updateNodeData(id, { text: e.target.value })}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          updateNodeData(id, { text: e.target.value });
+        }}
       />
     </div>
   );
@@ -533,21 +561,20 @@ Downstream nodes connect to the specific handle and check for `null` to know whe
 When handles are added, removed, or repositioned programmatically, React Flow must recalculate internal dimensions. Call `useUpdateNodeInternals()` after the change.
 
 ```tsx
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 
 function DynamicHandleNode({ id }: NodeProps) {
   const updateNodeInternals = useUpdateNodeInternals();
   const [outputs, setOutputs] = useState(['out-1']);
 
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, outputs, updateNodeInternals]);
+
   const addHandle = useCallback(() => {
-    setOutputs((prev) => {
-      const next = [...prev, `out-${prev.length + 1}`];
-      // Must call after state update triggers a render
-      requestAnimationFrame(() => updateNodeInternals(id));
-      return next;
-    });
-  }, [id, updateNodeInternals]);
+    setOutputs((prev) => [...prev, `out-${prev.length + 1}`]);
+  }, []);
 
   return (
     <div>
@@ -567,7 +594,7 @@ function DynamicHandleNode({ id }: NodeProps) {
 }
 ```
 
-**Critical**: Call `updateNodeInternals` **after** the render that adds/removes the handle, not before. Using `requestAnimationFrame` or placing the call in a `useEffect` ensures the DOM has updated.
+**Critical**: Call `updateNodeInternals` **after** the render that adds/removes the handle, not before. An effect tied to the rendered handle state runs after commit. Keep state updaters pure; scheduling a frame inside an updater is a side effect and can run more than once under Strict Mode. When removing a handle, also remove or remap edges that reference its ID.
 
 ### Data-driven handles
 
@@ -585,7 +612,7 @@ function SchemaNode({ id, data }: NodeProps<Node<{ fields: string[] }>>) {
     <div>
       <Handle type="target" position={Position.Left} />
       {data.fields.map((field) => (
-        <div key={field} style={{ display: 'flex', alignItems: 'center' }}>
+        <div key={field} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <span>{field}</span>
           <Handle
             type="source"
@@ -604,8 +631,10 @@ function SchemaNode({ id, data }: NodeProps<Node<{ fields: string[] }>>) {
 ### Basic validation with isValidConnection
 
 ```tsx
+// Set/clear this ref with onReconnectStart/onReconnectEnd, as shown below.
+const reconnectingEdgeId = useRef<string | null>(null);
 const isValidConnection = useCallback(
-  (connection: Connection) => {
+  (connection: Connection | Edge) => {
     // Prevent self-connections
     if (connection.source === connection.target) return false;
 
@@ -613,10 +642,11 @@ const isValidConnection = useCallback(
     const edges = getEdges();
     const exists = edges.some(
       (e) =>
+        e.id !== reconnectingEdgeId.current &&
         e.source === connection.source &&
         e.target === connection.target &&
-        e.sourceHandle === connection.sourceHandle &&
-        e.targetHandle === connection.targetHandle,
+        (e.sourceHandle ?? null) === (connection.sourceHandle ?? null) &&
+        (e.targetHandle ?? null) === (connection.targetHandle ?? null),
     );
     return !exists;
   },
@@ -629,24 +659,24 @@ const isValidConnection = useCallback(
 ### Cycle prevention using getOutgoers
 
 ```tsx
-import { useCallback } from 'react';
-import { getOutgoers, useReactFlow, type Connection } from '@xyflow/react';
+import { useCallback, type RefObject } from 'react';
+import { getOutgoers, useReactFlow, type Connection, type Edge } from '@xyflow/react';
 
-function useNoCycles() {
+function useNoCycles(reconnectingEdgeId?: RefObject<string | null>) {
   const { getNodes, getEdges } = useReactFlow();
 
   return useCallback(
-    (connection: Connection) => {
+    (connection: Connection | Edge) => {
       const nodes = getNodes();
-      const edges = getEdges();
+      const edges = getEdges().filter((e) => e.id !== reconnectingEdgeId?.current);
       const target = nodes.find((n) => n.id === connection.target);
       if (!target) return false;
 
       // Prevent self-connection
       if (connection.source === connection.target) return false;
 
-      // BFS: walk from target along outgoing edges — if we reach source, it's a cycle
-      const hasCycle = (node: typeof target, visited = new Set<string>()) => {
+      // DFS: walk from target along outgoing edges — if we reach source, it's a cycle
+      const hasCycle = (node: typeof target, visited = new Set<string>()): boolean => {
         if (visited.has(node.id)) return false;
         visited.add(node.id);
         for (const outgoer of getOutgoers(node, nodes, edges)) {
@@ -658,7 +688,7 @@ function useNoCycles() {
 
       return !hasCycle(target);
     },
-    [getNodes, getEdges],
+    [getNodes, getEdges, reconnectingEdgeId],
   );
 }
 ```
@@ -666,9 +696,16 @@ function useNoCycles() {
 Usage:
 
 ```tsx
-const isValidConnection = useNoCycles();
+const reconnectingEdgeId = useRef<string | null>(null);
+const isValidConnection = useNoCycles(reconnectingEdgeId);
 
-<ReactFlow isValidConnection={isValidConnection} ... />
+<ReactFlow
+  isValidConnection={isValidConnection}
+  onReconnectStart={(_, edge) => { reconnectingEdgeId.current = edge.id; }}
+  onReconnectEnd={() => { reconnectingEdgeId.current = null; }}
+  // Also wire onReconnect with reconnectEdge to persist the new endpoints.
+  ...
+/>
 ```
 
 ## Connection limits
@@ -744,7 +781,7 @@ function DetailNode({ data }: NodeProps<Node<DetailNodeData>>) {
 export default memo(DetailNode);
 ```
 
-**Critical**: Define the selector **outside** the component to keep a stable reference. If defined inline, the selector identity changes every render, defeating the optimization.
+A module-level selector avoids recreating the function. The boolean result and the store equality check prevent unrelated zoom updates from rendering this component; an inline selector does not inherently defeat that optimization.
 
 ## Collaborative editing
 
@@ -767,6 +804,7 @@ npm install yjs y-webrtc
 ```
 
 ```ts
+import type { Node, Edge } from '@xyflow/react';
 import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 
@@ -778,6 +816,8 @@ const provider = new WebrtcProvider('my-flow-room', ydoc);
 const yNodes = ydoc.getMap<Node>('nodes');
 const yEdges = ydoc.getArray<Edge>('edges');
 ```
+
+This fragment illustrates observation and a node update only. A complete adapter must preserve local selection/measurements, sort parents before children, handle additions/deletions/edges, avoid echoing remote updates, and destroy the provider/document on cleanup.
 
 Sync React Flow state with Yjs by observing changes:
 

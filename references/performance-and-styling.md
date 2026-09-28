@@ -15,7 +15,7 @@ Use this file when optimizing React Flow for large graphs, reducing re-renders, 
 
 ### 1. Memoize custom node and edge components
 
-Custom components re-render whenever any node/edge changes unless memoized:
+Memoize expensive custom components to avoid parent-driven renders when their props are unchanged. Memoization does not suppress their own state or store subscriptions:
 
 ```tsx
 import { memo } from 'react';
@@ -227,7 +227,7 @@ Override default styles by setting CSS variables on `.react-flow` or `:root`:
 }
 ```
 
-**Note**: Several `--xy-node-*`, `--xy-handle-*`, and `--xy-controls-*` `-default` variables are defined only in `style.css`, not `base.css`, so they have no effect if you import only `base.css` (as in the Tailwind setup below).
+**Note**: Several `--xy-node-*`, `--xy-handle-*`, and `--xy-controls-*` `-default` variables are defined only in `style.css`, not `base.css`, so they have no effect if you import only `base.css` when you choose that minimal stylesheet.
 
 ### Dark theme example
 
@@ -284,11 +284,16 @@ Override default styles by setting CSS variables on `.react-flow` or `:root`:
 
 ### Setup
 
-Import only base styles (not the full stylesheet):
+Keep `style.css` for the default node, handle, and control visuals. Use `base.css` only when supplying those visuals yourself; using Tailwind does not require discarding them.
 
-```tsx
-import '@xyflow/react/dist/base.css';
+For Tailwind v4, put React Flow styles in a cascade layer below utilities:
+
+```css
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css" layer(base);
 ```
+
+This allows utilities to override the defaults. Tailwind v3 projects can retain their existing CSS/import setup. See [React Flow theming](https://reactflow.dev/learn/customization/theming).
 
 ### Custom node with Tailwind
 
@@ -307,19 +312,19 @@ function TailwindNode({ data }) {
       <Handle
         type="target"
         position={Position.Top}
-        className="w-16 !bg-teal-500"
+        className="w-16 bg-teal-500"
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-16 !bg-teal-500"
+        className="w-16 bg-teal-500"
       />
     </div>
   );
 }
 ```
 
-**Note**: Use `!` prefix (important modifier) to override React Flow's default handle styles (e.g., `!bg-teal-500`).
+**Note**: With layered Tailwind v4 CSS, ordinary utilities usually suffice. If an important modifier is necessary, v4 prefers `bg-teal-500!`; v3 uses `!bg-teal-500`.
 
 ### Utility CSS classes
 
@@ -339,47 +344,15 @@ These can be combined with Tailwind classes:
 
 ## Accessibility
 
-### Built-in features
-
-- Nodes and edges are focusable with Tab key
-- Arrow keys move selected nodes
-- Enter/Space activates selection
-- Escape deselects
-
-### Configuration
-
-```tsx
-<ReactFlow
-  nodesFocusable={true}        // Tab cycles through nodes
-  edgesFocusable={true}        // Tab cycles through edges
-  disableKeyboardA11y={false}  // Keep keyboard navigation
-  ariaLabelConfig={{
-    // Customize ARIA labels
-  }}
-  ...
-/>
-```
-
-### Custom node accessibility
-
-```tsx
-const nodes = [
-  {
-    id: '1',
-    data: { label: 'Start' },
-    position: { x: 0, y: 0 },
-    ariaLabel: 'Start node - beginning of the workflow',
-  },
-];
-```
+See [Accessibility and keyboard interaction](accessibility.md) for keyboard connection creation, accessible names, focus management, and verification. Keep built-in keyboard support enabled and test custom node forms independently from canvas shortcuts.
 
 ## Do / Don't
 
 - Do memoize custom node/edge components with `React.memo`.
 - Do memoize `nodeTypes`, `edgeTypes`, callback props, and object props.
 - Do benchmark `onlyRenderVisibleElements` for large or expensive graphs; its benefit depends on node complexity, graph density, and interaction patterns.
-- Do import `base.css` instead of `style.css` when using Tailwind.
+- Do choose `style.css` or `base.css` based on whether you retain or replace the default visuals.
 - Do use CSS variables for theme customization.
 - Don't subscribe to full `nodes`/`edges` arrays in components that only need a subset.
 - Don't apply complex CSS effects (shadows, animations) to nodes in large graphs.
-- Don't forget the `!` modifier in Tailwind when overriding React Flow default styles.
+- Do check cascade layers and stylesheet order before adding important modifiers.

@@ -1,6 +1,6 @@
 ---
 name: react-flow
-description: "Expert guidance for React Flow (@xyflow/react): building interactive node-based graphs, custom nodes and edges, handles, state management, layouting, TypeScript patterns, performance optimization, and theming. Use when writing React Flow code, creating custom nodes or edges, debugging flow issues, optimizing graph performance, integrating with Zustand, or building canvas-based UIs with React Flow."
+description: "Expert guidance for React Flow (@xyflow/react): building interactive node-based graphs, custom nodes and edges, handles, state management, layouting, TypeScript patterns, performance optimization, accessibility, SSR, and theming. Use when writing React Flow code, creating custom nodes or edges, debugging flow issues, optimizing graph performance, integrating with Zustand, or building canvas-based UIs with React Flow."
 ---
 
 # React Flow
@@ -9,25 +9,31 @@ description: "Expert guidance for React Flow (@xyflow/react): building interacti
 
 Use this skill to build, customize, debug, and optimize interactive node-based UIs with React Flow (@xyflow/react v12+). Covers everything from basic setup to advanced patterns like computed flows, sub-flows, and external layout integration.
 
+## Version and source policy
+
+Guidance reviewed against `@xyflow/react` **12.12.0** on **2026-09-28**. Check the target project's installed version and lockfile before applying an API; “v12+” does not mean every minor release has every feature. Preserve the project's state and styling choices unless the task requires changing them.
+
+Use the [official documentation index](https://reactflow.dev/llms.txt) to find a specific guide or API page. For version-sensitive behavior, check [release notes](https://github.com/xyflow/xyflow/releases) and the installed package's declarations/source. Read only the references relevant to the task. Examples with omitted imports or `...` are integration sketches, not standalone applications.
+
 ## Agent behavior contract (follow these rules)
 
-1. Always import from `@xyflow/react` — never from legacy `reactflow` or `react-flow-renderer` packages.
-2. Always import the stylesheet: `import '@xyflow/react/dist/style.css'` (or `base.css` for custom styling frameworks).
-3. The `<ReactFlow>` parent container **must** have explicit width and height — this is the #1 cause of blank canvases.
+1. For v12 projects, import from `@xyflow/react`. If maintaining a legacy project, follow its installed API until a migration is in scope.
+2. Always import the stylesheet: `import '@xyflow/react/dist/style.css'` (or `base.css` when replacing the default visual styles).
+3. The `<ReactFlow>` parent container **must** resolve to nonzero width and height (explicit sizing or a sized flex/grid layout).
 4. Define `nodeTypes` and `edgeTypes` objects **outside** component bodies or wrap in `useMemo` to prevent re-renders.
-5. Prefer custom nodes over built-in nodes — the React Flow team explicitly recommends this.
+5. Use custom nodes for application-specific content or handles; built-in nodes remain suitable for simple labeled graphs.
 6. Use the `nodrag` class on interactive elements inside custom nodes (inputs, buttons, selects).
 7. Use `nowheel` class on scrollable elements inside custom nodes to prevent zoom interference.
 8. When hiding handles, use `visibility: hidden` or `opacity: 0` — never `display: none` (breaks dimension calculation).
 9. When using multiple handles of the same type on a node, always assign unique `id` props.
-10. After programmatically adding/removing handles, call `useUpdateNodeInternals` to refresh the node.
+10. After adding, removing, or repositioning handles, call `useUpdateNodeInternals` after the DOM update, such as in an effect.
 11. Always create new objects when updating node/edge state — mutations are not detected by React Flow.
 12. Prefer controlled flows for non-trivial applications. Wire `onNodesChange` and `onEdgesChange` for editable controlled elements, and add `onConnect` only when users can create connections.
 
 ## First 60 seconds (triage template)
 
-- Clarify the goal: new flow setup, custom nodes/edges, state management, layout, performance, styling, E2E testing, advanced patterns (undo/redo, copy/paste, computed flows, collaboration), or debugging.
-- Collect minimal facts:
+- Identify the goal from the request: new flow setup, custom nodes/edges, state management, layout, performance, styling, E2E testing, advanced patterns (undo/redo, copy/paste, computed flows, collaboration), or debugging.
+- Inspect the project for these facts; ask only when a missing fact affects the solution:
   - React Flow version (v12+ uses `@xyflow/react`)
   - TypeScript or JavaScript
   - State management approach (local state, Zustand, Redux)
@@ -54,6 +60,8 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 - External layout libraries (dagre, elkjs, d3), sub-flows, parent-child -> `references/layouting.md`
 - Background, Controls, MiniMap, Panel, NodeToolbar, NodeResizer, hooks -> `references/components-and-hooks.md`
 - Memoization, render optimization, theming, CSS variables, Tailwind -> `references/performance-and-styling.md`
+- Keyboard workflows, accessible names, focus management, assistive technology -> `references/accessibility.md`
+- Server rendering, initial geometry, hydration, Next.js boundaries -> `references/ssr-and-hydration.md`
 - Common errors, debugging, edge display issues, Zustand warnings -> `references/troubleshooting.md`
 - Playwright E2E tests, flow selectors, drag/viewport/connection testing -> `references/e2e-testing.md`
 - Undo/redo, copy/paste, computed flows, dynamic handles, save/restore, collaboration -> `references/advanced-patterns.md`
@@ -75,14 +83,16 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 ## Verification checklist
 
 - Confirm `@xyflow/react/dist/style.css` is imported (or `base.css` + custom styles).
-- Confirm parent container has explicit width and height.
+- Confirm the parent container resolves to nonzero width and height.
 - Confirm `nodeTypes` / `edgeTypes` are stable references (defined outside component or memoized).
-- Confirm custom nodes use `<Handle>` components with proper `type` and `position`.
+- Confirm custom nodes that need connections use `<Handle>` components with proper `type`, `position`, and IDs.
 - Confirm interactive elements inside nodes have `nodrag` class.
 - Confirm controlled flows wire `onNodesChange`/`onEdgesChange` for editable elements and `onConnect` when connection creation is enabled.
 - Confirm state updates create new node/edge objects (no mutations).
 - Confirm TypeScript generics are applied to hooks and callbacks for type safety.
 - Confirm performance-sensitive flows memoize custom node/edge components with `React.memo`.
+
+For changed examples, type-check complete snippets and exercise the affected interaction in a real browser. Compilation alone does not verify handles, edge geometry, dragging, or viewport visibility.
 
 ## References
 
@@ -100,3 +110,5 @@ Use this skill to build, customize, debug, and optimize interactive node-based U
 - `references/e2e-testing.md`
 - `references/advanced-patterns.md`
 - `references/recipes.md`
+- `references/accessibility.md`
+- `references/ssr-and-hydration.md`

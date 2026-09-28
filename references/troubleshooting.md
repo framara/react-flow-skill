@@ -108,12 +108,13 @@ const nodeTypes = { textUpdater: TextUpdaterNode }; // not 'TextUpdater' or 'tex
 1. Two versions of `@xyflow/react` installed (check `package-lock.json`)
 2. Using React Flow hooks outside `<ReactFlowProvider>`
 
-**Fix 1**: Remove `node_modules` and `package-lock.json`, reinstall:
+**Fix 1**: Inspect dependency duplication before changing the dependency tree:
 
 ```bash
-rm -rf node_modules package-lock.json
-npm install
+npm ls @xyflow/react @xyflow/system zustand
 ```
+
+Align incompatible dependency versions, or use the project's package manager to deduplicate compatible versions. Preserve the lockfile; deleting it can upgrade unrelated dependencies and does not fix a missing provider.
 
 **Fix 2**: Wrap with provider:
 
@@ -307,7 +308,11 @@ module.exports = {
 
 ### SSR / Server-Side Rendering issues
 
-React Flow requires DOM APIs. For Next.js App Router, add the `'use client'` directive at the top of the file containing your flow:
+See [Server rendering and hydration](ssr-and-hydration.md) for a complete example and server/browser verification.
+
+React Flow v12 supports SSR and static rendering. Server-rendered nodes need known dimensions (`width`/`height`, or initial dimensions); server-rendered edges also need handle geometry in each node's `handles` array. Server-side `fitView` needs known viewport dimensions. See the [official SSR guide](https://reactflow.dev/learn/advanced-use/ssr-ssg-configuration).
+
+For an interactive flow in Next.js App Router, put a client boundary around the flow component:
 
 ```tsx
 'use client';
@@ -316,21 +321,7 @@ import { ReactFlow } from '@xyflow/react';
 // ...
 ```
 
-For Next.js Pages Router or when you need to fully skip SSR:
-
-```tsx
-import dynamic from 'next/dynamic';
-
-const Flow = dynamic(() => import('./Flow'), { ssr: false });
-```
-
-Or use `useEffect` to delay rendering:
-
-```tsx
-const [mounted, setMounted] = useState(false);
-useEffect(() => setMounted(true), []);
-if (!mounted) return null;
-```
+`'use client'` does not disable server prerendering. Use `dynamic(() => import('./Flow'), { ssr: false })` only when the flow or a dependency genuinely cannot render on the server; in App Router, declare that dynamic import inside a Client Component.
 
 ## Debugging tools
 

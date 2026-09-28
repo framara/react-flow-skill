@@ -1,0 +1,4 @@
+verification/node_modules/
+verification/artifacts/
+verification/examples-*/
+verification/package-lock.json.tmp

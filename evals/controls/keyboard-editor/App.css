@@ -1,0 +1,16 @@
+.workflow-editor { box-sizing: border-box; width: 100%; min-height: 100vh; padding: 20px; color: #172337; background: #f6f8fb; font: 15px/1.5 system-ui, sans-serif; }
+.workflow-editor h1 { margin: 0 0 6px; font-size: 24px; }
+.workflow-editor p { margin: 8px 0; }
+.connection-form { display: flex; align-items: end; gap: 16px; flex-wrap: wrap; }
+.connection-form label, .step-field { display: flex; flex-direction: column; gap: 4px; }
+.workflow-editor select, .workflow-editor input, .workflow-editor button { box-sizing: border-box; border: 1px solid #8c9ab0; border-radius: 5px; font: inherit; padding: 7px 10px; background: white; color: #172337; }
+.connection-form select { min-width: 180px; }
+.workflow-editor button { background: #1d4ed8; color: white; border-color: #1d4ed8; cursor: pointer; }
+.connection-status { min-height: 24px; }
+.flow-canvas { height: 480px; width: 100%; border: 1px solid #a4afbe; border-radius: 8px; background: white; }
+.workflow-step { width: 180px; padding: 16px; border: 1px solid #697b95; border-radius: 8px; background: white; box-shadow: 0 2px 6px #17233715; }
+.step-field { margin-top: 10px; font-size: 13px; }
+.step-field input { width: 100%; }
+.workflow-editor :is(input, select, button):focus-visible, .workflow-editor .react-flow__node:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 4px; }
+.workflow-editor .react-flow__node.selected .workflow-step { border-color: #1d4ed8; box-shadow: 0 0 0 2px #1d4ed8; }
+.workflow-editor .react-flow__edge:focus-visible .react-flow__edge-path { stroke: #1d4ed8; stroke-width: 3; }

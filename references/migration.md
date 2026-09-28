@@ -17,6 +17,7 @@ Use this file when upgrading a project from the legacy `reactflow` package (v11 
 - [TypeScript type changes](#typescript-type-changes)
 - [Hooks changes](#hooks-changes)
 - [Removed utilities and change events](#removed-utilities-and-change-events)
+- [Minor-version compatibility](#minor-version-compatibility)
 - [Step-by-step checklist](#step-by-step-checklist)
 
 ## Package rename
@@ -204,6 +205,20 @@ Replace removed deprecated APIs:
 | `updateEdge` utility | `reconnectEdge` |
 
 Custom implementations of `applyNodeChanges` or `applyEdgeChanges` must handle the new `replace` change event. The old `reset` event was removed.
+
+## Minor-version compatibility
+
+Check the installed minor version before adopting newer v12 APIs:
+
+| Version | Relevant change |
+|---------|-----------------|
+| 12.4 | `useNodeConnections` replaces deprecated `useHandleConnections` |
+| 12.9 | `EdgeToolbar` is available |
+| 12.10 | `zIndexMode` controls automatic/manual stacking behavior |
+| 12.11 | `autoPanOnSelection`; `handleId` in `useNodeConnections` requires `handleType` |
+| 12.12 | Resize gestures pair `onResizeEnd` with `onResizeStart`, including when `shouldResize` rejects changes |
+
+Sources: [React Flow changelog](https://reactflow.dev/whats-new), [12.12.0 release](https://github.com/xyflow/xyflow/releases/tag/%40xyflow%2Freact%4012.12.0). Keep a project's upgrade deliberate rather than assuming the latest examples work on every v12 installation.
 
 ## Step-by-step checklist
 

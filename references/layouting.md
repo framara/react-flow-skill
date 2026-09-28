@@ -35,9 +35,9 @@ Best for tree-shaped graphs with straightforward requirements.
 import dagre from '@dagrejs/dagre';
 import { Position } from '@xyflow/react';
 
-const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-
 function getLayoutedElements(nodes, edges, direction = 'TB') {
+  // A fresh graph prevents deleted nodes/edges from affecting later layouts.
+  const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
   const isHorizontal = direction === 'LR';
   dagreGraph.setGraph({ rankdir: direction });
 
@@ -102,7 +102,7 @@ function LayoutFlow() {
 }
 ```
 
-**Note**: Dagre centers nodes by default. Subtract half the width/height to get the top-left origin React Flow expects.
+**Note**: This flat-graph example assumes the default `nodeOrigin={[0, 0]}`. Dagre centers nodes; subtract half their dimensions for top-left positions. Handle sub-flow coordinates separately, and use ELK for compound layouts when children connect outside their group. Custom nodes must consume `sourcePosition`/`targetPosition` for direction changes to move their handles.
 
 ## ELK integration
 
@@ -127,8 +127,6 @@ async function getLayoutedElements(nodes, edges, options = {}) {
       id: node.id,
       width: node.measured?.width ?? 150,
       height: node.measured?.height ?? 50,
-      targetPosition: 'top',
-      sourcePosition: 'bottom',
     })),
     edges: edges.map((edge) => ({
       id: edge.id,
@@ -151,7 +149,7 @@ async function getLayoutedElements(nodes, edges, options = {}) {
 }
 ```
 
-**Note**: ELK runs asynchronously. Handle the layout in a `useEffect` or event handler with `await`.
+**Note**: ELK runs asynchronously. Handle errors and discard stale results if another layout or graph edit overtakes the request. This example maps node positions only; rendering ELK edge routes requires custom edges that consume its sections/bend points. For sub-flows, build nested ELK children and map their relative coordinates back.
 
 ## D3-Hierarchy integration
 
@@ -394,13 +392,7 @@ function Flow() {
 
 ## Animated layout transitions
 
-Add smooth position changes when re-laying out:
-
-```css
-.react-flow__node {
-  transition: transform 300ms ease-out;
-}
-```
+Interpolate node positions in state with `requestAnimationFrame`, stopping on unmount or when another layout/drag starts. Edges then track the same positions. A CSS-only `transform` transition moves node DOM without updating edge geometry on each frame, so it is unsuitable when edges must stay attached during animation. See the [node position animation example](https://reactflow.dev/examples/nodes/node-position-animation).
 
 ## Do / Don't
 

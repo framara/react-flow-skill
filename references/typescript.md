@@ -101,13 +101,12 @@ import { type Edge, type EdgeProps, BaseEdge, getBezierPath } from '@xyflow/reac
 
 type WeightedEdge = Edge<{ weight: number }, 'weighted'>;
 
-function WeightedEdge({ id, sourceX, sourceY, targetX, targetY, data }: EdgeProps<WeightedEdge>) {
-  const [edgePath] = getBezierPath({ sourceX, sourceY, targetX, targetY });
+function WeightedEdge({ id, data, ...props }: EdgeProps<WeightedEdge>) {
+  const [edgePath, labelX, labelY] = getBezierPath(props);
   return (
-    <>
-      <BaseEdge id={id} path={edgePath} />
-      <text>{data?.weight}</text>
-    </>
+    <BaseEdge id={id} path={edgePath} label={data?.weight}
+      labelX={labelX} labelY={labelY} style={props.style}
+      markerStart={props.markerStart} markerEnd={props.markerEnd} />
   );
 }
 ```
@@ -208,6 +207,8 @@ import {
   ReactFlow,
   Background,
   Controls,
+  Handle,
+  Position,
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
@@ -230,7 +231,9 @@ type AppEdge = Edge;
 function ColorNodeComponent({ data }: NodeProps<ColorNode>) {
   return (
     <div style={{ background: data.color, padding: 10 }}>
+      <Handle type="target" position={Position.Top} />
       {data.label}
+      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 ## When to use this reference
 
-Use this file when creating custom node components, configuring handles, or building interactive elements inside nodes. The React Flow team recommends custom nodes over built-in types for any real application.
+Use this file when creating custom node components, configuring handles, or building interactive elements inside nodes. Use custom nodes when built-in labeled nodes do not cover the required UI.
 
 ## Contents
 
@@ -167,7 +167,7 @@ Wrap any element with `<Handle>` and hide the default appearance:
 </Handle>
 ```
 
-**Critical**: Set `pointerEvents: 'none'` on children so the handle receives click/drag events.
+Setting `pointerEvents: 'none'` on a decorative icon makes the handle the event target. This is not required for all handle children: newer v12 releases also support starting connections from child content.
 
 ### Hiding handles
 
@@ -186,16 +186,11 @@ Use `visibility: hidden` or `opacity: 0` — **never** `display: none`:
 When programmatically adding or removing handles, refresh node internals:
 
 ```tsx
-import { useUpdateNodeInternals } from '@xyflow/react';
-
-function DynamicNode({ id }) {
-  const updateNodeInternals = useUpdateNodeInternals();
-
-  const addHandle = () => {
-    // ... add handle to state
-    updateNodeInternals(id);
-  };
-}
+// Complete example: advanced-patterns.md → Dynamic handle generation.
+// `handles` is the state/data used to render this node's handles.
+useEffect(() => {
+  updateNodeInternals(id);
+}, [id, handles, updateNodeInternals]);
 ```
 
 ### Handle validation styling
@@ -273,7 +268,7 @@ import { ReactFlow, ConnectionMode } from '@xyflow/react';
 
 ## Do / Don't
 
-- Do use custom nodes for anything beyond the simplest prototypes.
+- Do use custom nodes when the graph needs custom content or connection points.
 - Do apply `nodrag` to all interactive form elements inside nodes.
 - Do give unique `id`s to multiple handles of the same type.
 - Do use `pointerEvents: 'none'` on custom handle child elements.

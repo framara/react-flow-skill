@@ -179,7 +179,7 @@ function LabeledEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
 
 ## Edge toolbar
 
-`<EdgeToolbar>` renders a toolbar near the edge (appears when edge is selected):
+`<EdgeToolbar>` (v12.9+) renders a toolbar near the edge (appears when edge is selected):
 
 ```tsx
 import { BaseEdge, EdgeToolbar, getBezierPath } from '@xyflow/react';
@@ -198,6 +198,8 @@ function ToolbarEdge({ id, ...props }) {
   );
 }
 ```
+
+Forward `style`, `markerStart`, `markerEnd`, and other supported props to `<BaseEdge>` when the custom edge should honor those options; the minimal examples above omit that forwarding.
 
 ## Edge markers (arrows)
 
@@ -278,7 +280,7 @@ const onReconnect = useCallback(
 
 ## Default edge options
 
-Apply defaults to all new edges created via connections:
+Apply fallback options to all rendered edges; each edge can override them:
 
 ```tsx
 const defaultEdgeOptions = {
@@ -333,7 +335,11 @@ function MovingCircleEdge({ id, ...props }: EdgeProps) {
 ### SVG text along path
 
 ```tsx
-function TextPathEdge({ id, data, ...props }: EdgeProps) {
+import { BaseEdge, getBezierPath, type Edge, type EdgeProps } from '@xyflow/react';
+
+type TextPathEdgeType = Edge<{ label: string }, 'textPath'>;
+
+function TextPathEdge({ id, data, ...props }: EdgeProps<TextPathEdgeType>) {
   const [edgePath] = getBezierPath(props);
   return (
     <>

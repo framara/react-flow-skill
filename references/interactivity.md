@@ -60,7 +60,7 @@ function Flow() {
 }
 ```
 
-Without `onNodesChange`, controlled nodes snap back after dragging. Without `onEdgesChange`, controlled edge selection, reconnection, and deletion changes are not applied. Add `onConnect` when users are allowed to create new edges.
+Without `onNodesChange`, controlled nodes snap back after dragging. Without `onEdgesChange`, controlled edge selection and deletion changes are not applied. Reconnection separately needs `onReconnect` with `reconnectEdge` (see `custom-edges.md`). Add `onConnect` when users are allowed to create new edges.
 
 ## Default interactive capabilities
 
@@ -133,31 +133,34 @@ const isValidConnection = useCallback(
 <ReactFlow isValidConnection={isValidConnection} ... />
 ```
 
-`isValidConnection` receives a `Connection` for new connections and an `Edge` when an existing edge is reconnected — type the parameter as `Connection | Edge`.
+The public validator type accepts `Connection | Edge`, but interactive reconnection can pass a connection without an edge ID. Track the original edge with `onReconnectStart`/`onReconnectEnd` when validation must exclude it; see `advanced-patterns.md`. This simple example allows one edge per node pair; for multiple handles, compare both handle IDs too.
 
 ### Handling dropped connections (connecting to empty space)
 
 ```tsx
-const onConnectEnd = useCallback(
+// Source-to-empty-pane creation only; invalid drops on nodes do not create nodes.
+const onConnectEnd: OnConnectEnd = useCallback(
   (event, connectionState) => {
-    // fromNode is InternalNode | null — isValid alone doesn't narrow it, so guard explicitly
-    if (!connectionState.isValid && connectionState.fromNode) {
-      // Connection was dropped on empty canvas — create a new node here
-      const { clientX, clientY } = 'changedTouches' in event ? event.changedTouches[0] : event;
-      const position = screenToFlowPosition({ x: clientX, y: clientY });
-      const newNode = {
-        id: `node-${Date.now()}`,
-        position,
-        data: { label: 'New Node' },
-      };
-      setNodes((nds) => [...nds, newNode]);
-      setEdges((eds) => [
-        ...eds,
-        { id: `e-${Date.now()}`, source: connectionState.fromNode.id, target: newNode.id },
-      ]);
-    }
+    if (connectionState.isValid || !connectionState.fromNode ||
+        connectionState.fromHandle?.type !== 'source') return;
+    const point = 'changedTouches' in event ? event.changedTouches[0] : event;
+    if (!point) return;
+    const hit = document.elementFromPoint(point.clientX, point.clientY);
+    if (!hit?.classList.contains('react-flow__pane')) return;
+
+    const source = connectionState.fromNode.id;
+    const sourceHandle = connectionState.fromHandle.id;
+    const newNode = {
+      id: crypto.randomUUID(),
+      position: screenToFlowPosition({ x: point.clientX, y: point.clientY }),
+      data: { label: 'New Node' },
+    };
+    setNodes((nds) => [...nds, newNode]);
+    setEdges((eds) => addEdge({
+      id: crypto.randomUUID(), source, sourceHandle, target: newNode.id,
+    }, eds));
   },
-  [screenToFlowPosition],
+  [screenToFlowPosition, setNodes, setEdges],
 );
 ```
 
@@ -225,6 +228,7 @@ Or set `deletable: false` on individual nodes/edges:
 | `elementsSelectable` | `boolean` | `true` | Click to select |
 | `autoPanOnConnect` | `boolean` | `true` | Viewport pans during connection |
 | `autoPanOnNodeDrag` | `boolean` | `true` | Viewport pans during drag |
+| `autoPanOnSelection` | `boolean` | `true` | Pan while drawing a selection near the viewport edge (v12.11+) |
 | `panOnDrag` | `boolean \| number[]` | `true` | Enable panning; `[1]` = middle mouse only |
 | `panOnScroll` | `boolean` | `false` | Scroll to pan instead of zoom |
 | `zoomOnScroll` | `boolean` | `true` | Scroll wheel zooms |

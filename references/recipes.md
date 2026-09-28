@@ -69,7 +69,7 @@ function Flow() {
       {menu && (
         <div
           style={{
-            position: 'absolute',
+            position: 'fixed', // menu.x/y are viewport client coordinates
             top: menu.y,
             left: menu.x,
             background: 'white',
@@ -93,7 +93,7 @@ function Flow() {
 
 ## Drag-and-drop from sidebar
 
-Use the HTML Drag and Drop API to drag items from a sidebar onto the canvas. The key is converting the drop coordinates with `screenToFlowPosition`:
+Use the HTML Drag and Drop API for desktop dragging from a sidebar. For touch input, use Pointer Events or a touch-capable drag library. The key is converting the drop coordinates with `screenToFlowPosition`:
 
 ```tsx
 import { useCallback } from 'react';
@@ -325,6 +325,7 @@ function DownloadButton() {
 When adding nodes programmatically, call `fitView` after the state update to ensure all nodes are visible:
 
 ```tsx
+import { useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
 function AddAndFit() {
@@ -332,22 +333,22 @@ function AddAndFit() {
 
   const handleAdd = useCallback(() => {
     addNodes({
-      id: 'new',
+      id: crypto.randomUUID(),
       position: { x: 500, y: 500 },
       data: { label: 'Far away node' },
     });
 
-    // fitView runs after the next render when nodes are measured
-    requestAnimationFrame(() => {
-      fitView({ padding: 0.2, duration: 300 });
-    });
+    // Current v12 queues the fit until node updates and measurements are ready.
+    void fitView({ padding: 0.2, duration: 300 });
   }, [addNodes, fitView]);
 
   return <button onClick={handleAdd}>Add & Fit</button>;
 }
 ```
 
-Use `requestAnimationFrame` or a short timeout because `fitView` needs the new node to be rendered and measured first.
+Place this button in a `<Panel>` inside `<ReactFlow>`, or in a sibling under the same provider.
+
+This uses the queued `fitView` behavior verified in v12.12.0. For older versions, trigger fitting from measured-node readiness (`useNodesInitialized`) with a pending-fit flag; a timeout or one animation frame does not prove measurement has finished.
 
 ## Do / Don't
 
@@ -355,5 +356,5 @@ Use `requestAnimationFrame` or a short timeout because `fitView` needs the new n
 - Do use `application/reactflow` as the drag data MIME type to avoid conflicts with native browser drag-and-drop.
 - Do use `deleteElements` instead of manually filtering nodes and edges — it handles connected edge cleanup automatically.
 - Do target `.react-flow__viewport` (not the wrapper) when exporting to image.
-- Don't call `fitView` synchronously after `addNodes` — the node hasn't been measured yet. Use `requestAnimationFrame`.
+- Do check the installed version before choosing fit timing; current v12 queues `fitView` after node updates.
 - Don't forget `event.preventDefault()` in `onDragOver` — without it, the drop event won't fire.
